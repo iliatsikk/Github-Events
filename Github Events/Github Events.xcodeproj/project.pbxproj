@@ -6,8 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		23328C162DA9862400EA5C24 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 23328C152DA9862400EA5C24 /* Domain */; };
+		23328C182DA9862800EA5C24 /* Networking in Frameworks */ = {isa = PBXBuildFile; productRef = 23328C172DA9862800EA5C24 /* Networking */; };
+		239BA5E82DA8DFE5000C91EA /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 239BA5E72DA8DFE5000C91EA /* Alamofire */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		04A53AE32DA82E5A009DE8CD /* Github Events.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Github Events.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		23328B642DA981C900EA5C24 /* Domain */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Domain; path = ../Domain; sourceTree = SOURCE_ROOT; };
+		239BA5E52DA8DF7D000C91EA /* Networking */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Networking; path = ../Networking; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +44,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				23328C182DA9862800EA5C24 /* Networking in Frameworks */,
+				23328C162DA9862400EA5C24 /* Domain in Frameworks */,
+				239BA5E82DA8DFE5000C91EA /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -45,7 +56,10 @@
 		04A53ADA2DA82E5A009DE8CD = {
 			isa = PBXGroup;
 			children = (
+				23328B642DA981C900EA5C24 /* Domain */,
+				239BA5E52DA8DF7D000C91EA /* Networking */,
 				04A53AE52DA82E5A009DE8CD /* Github Events */,
+				23328C142DA9862400EA5C24 /* Frameworks */,
 				04A53AE42DA82E5A009DE8CD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -56,6 +70,13 @@
 				04A53AE32DA82E5A009DE8CD /* Github Events.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		23328C142DA9862400EA5C24 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -78,6 +99,9 @@
 			);
 			name = "Github Events";
 			packageProductDependencies = (
+				239BA5E72DA8DFE5000C91EA /* Alamofire */,
+				23328C152DA9862400EA5C24 /* Domain */,
+				23328C172DA9862800EA5C24 /* Networking */,
 			);
 			productName = "Github Events";
 			productReference = 04A53AE32DA82E5A009DE8CD /* Github Events.app */;
@@ -107,6 +131,9 @@
 			);
 			mainGroup = 04A53ADA2DA82E5A009DE8CD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				239BA5E62DA8DFE5000C91EA /* XCRemoteSwiftPackageReference "Alamofire" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 04A53AE42DA82E5A009DE8CD /* Products */;
 			projectDirPath = "";
@@ -333,6 +360,33 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		239BA5E62DA8DFE5000C91EA /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.10.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		23328C152DA9862400EA5C24 /* Domain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Domain;
+		};
+		23328C172DA9862800EA5C24 /* Networking */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Networking;
+		};
+		239BA5E72DA8DFE5000C91EA /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 239BA5E62DA8DFE5000C91EA /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 04A53ADB2DA82E5A009DE8CD /* Project object */;
 }

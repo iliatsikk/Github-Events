@@ -16,7 +16,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     let window = UIWindow(windowScene: windowScene)
 
-    let rootViewController = RootViewController()
+    let rootViewController = ProductListingViewController()
     window.rootViewController = TransparentNavigationController(rootViewController: rootViewController)
     self.window = window
     window.makeKeyAndVisible()

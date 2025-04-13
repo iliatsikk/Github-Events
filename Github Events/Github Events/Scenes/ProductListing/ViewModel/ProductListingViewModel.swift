@@ -116,6 +116,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     let nextURL = fetchedPaginationInfo?.nextPageURL
 
     await paginationState.finishedLoading(success: success, hasMoreData: canLoadMore, nextURL: nextURL)
+
+    send(action: .updatePaginationState(isLoading: false))
   }
 
   // MARK: - Private Implementations
@@ -130,6 +132,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     guard didStartLoading else {
       return
     }
+
+    send(action: .updatePaginationState(isLoading: true))
 
     await getData()
   }

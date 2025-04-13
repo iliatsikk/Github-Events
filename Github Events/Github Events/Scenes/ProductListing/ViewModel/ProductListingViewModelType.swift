@@ -12,6 +12,7 @@ import UIKit
 extension ProductListingViewController {
   enum ViewActions: Sendable {
     case applyItems([DataSourceItem])
+    case updatePaginationState(isLoading: Bool)
   }
 }
 

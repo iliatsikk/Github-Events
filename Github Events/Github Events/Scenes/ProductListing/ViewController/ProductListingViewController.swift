@@ -21,6 +21,8 @@ class ProductListingViewController: UIViewController {
   private let viewModel: ProductListingViewModelType
   private var bindingTask: Task<Void, Never>? = nil
 
+  private var isPaginating: Bool = false
+
   // MARK: - Lifecycle
 
   init() {
@@ -72,7 +74,10 @@ class ProductListingViewController: UIViewController {
   private func handle(action: ViewActions?) {
     switch action {
     case .applyItems(let items):
-      applyInitialSnapshot(items)
+      applyUpdateSnapshot(items)
+    case .updatePaginationState(let isLoading):
+      isPaginating = isLoading
+      reloadFooterState()
     case nil:
       print("nil action received")
     }
@@ -89,6 +94,12 @@ class ProductListingViewController: UIViewController {
     view.addSubview(collectionView)
 
     collectionView.translatesAutoresizingMaskIntoConstraints = false
+
+    collectionView.register(
+      PaginationFooterView.self,
+      forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter,
+      withReuseIdentifier: PaginationFooterView.reuseIdentifier
+    )
 
     NSLayoutConstraint.activate([
       collectionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
@@ -108,18 +119,31 @@ class ProductListingViewController: UIViewController {
       )
 
       let item = NSCollectionLayoutItem(layoutSize: itemSize)
+      item.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4.0.scaledWidth, bottom: 0, trailing: 4.0.scaledWidth)
 
       let groupSize = NSCollectionLayoutSize(
         widthDimension: .fractionalWidth(1.0),
         heightDimension: .absolute(165.0.scaledWidth)
       )
+
       let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 2)
-      group.contentInsets = NSDirectionalEdgeInsets(
-        top: 0, leading: 8.0.scaledWidth, bottom: 0, trailing: 8.0.scaledWidth
-      )
 
       let section = NSCollectionLayoutSection(group: group)
-      section.interGroupSpacing = 4.0.scaledWidth
+      section.interGroupSpacing = 8.0.scaledWidth
+      section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 8.0.scaledWidth, bottom: 0, trailing: 8.0.scaledWidth)
+
+      let footerSize = NSCollectionLayoutSize(
+        widthDimension: .fractionalWidth(1.0),
+        heightDimension: .absolute(50.0.scaledWidth)
+      )
+
+      let sectionFooter = NSCollectionLayoutBoundarySupplementaryItem(
+        layoutSize: footerSize,
+        elementKind: UICollectionView.elementKindSectionFooter,
+        alignment: .bottom
+      )
+
+      section.boundarySupplementaryItems = [sectionFooter]
 
       return section
     }
@@ -130,7 +154,6 @@ class ProductListingViewController: UIViewController {
 
     return layout
   }
-
 
   // MARK: - Data Source (Diffable + Cell Registration + Hosting Configuration)
 
@@ -152,21 +175,64 @@ class ProductListingViewController: UIViewController {
         item: item
       )
     }
+
+    dataSource?.supplementaryViewProvider = { [weak self] (collectionView, kind, indexPath) -> UICollectionReusableView? in
+      guard let self = self, kind == UICollectionView.elementKindSectionFooter else { return nil }
+
+      guard let footerView = collectionView.dequeueReusableSupplementaryView(
+        ofKind: kind,
+        withReuseIdentifier: PaginationFooterView.reuseIdentifier,
+        for: indexPath
+      ) as? PaginationFooterView else {
+        fatalError("Failed")
+      }
+
+      if self.isPaginating {
+        footerView.startAnimating()
+      } else {
+        footerView.stopAnimating()
+      }
+
+      return footerView
+    }
   }
 
   // MARK: - Snapshot Update
 
   @MainActor
-  private func applyInitialSnapshot(_ items: [DataSourceItem]) {
+  private func applyUpdateSnapshot(_ items: [DataSourceItem]) {
     guard var snapshot = dataSource?.snapshot() else { return }
 
-    if !snapshot.sectionIdentifiers.contains(.listing) {
+    if snapshot.sectionIdentifiers.isEmpty {
       snapshot.appendSections([.listing])
     }
 
-    snapshot.appendItems(items, toSection: .listing)
+    /// only new items are appended
+    let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
+    let newItems = items.filter { !existingItems.contains($0) }
 
-    dataSource?.apply(snapshot, animatingDifferences: false)
+    if !newItems.isEmpty {
+      snapshot.appendItems(newItems, toSection: .listing)
+
+      dataSource?.apply(snapshot, animatingDifferences: true)
+    } else if snapshot.numberOfItems == 0 && !items.isEmpty { /// initial items without animation
+      snapshot.appendItems(items, toSection: .listing)
+      dataSource?.apply(snapshot, animatingDifferences: false)
+    }
+  }
+
+  @MainActor
+  private func reloadFooterState() {
+    guard let dataSource else { return }
+    var currentSnapshot = dataSource.snapshot()
+
+    if !currentSnapshot.sectionIdentifiers.contains(.listing) {
+      return
+    }
+
+    currentSnapshot.reloadSections([.listing])
+
+    dataSource.apply(currentSnapshot, animatingDifferences: false)
   }
 }
 

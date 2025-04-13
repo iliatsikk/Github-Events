@@ -29,7 +29,6 @@ public actor PaginationState: Sendable {
     }
 
     self.isLoadingMore = true
-    print("PaginationState: Start loading triggered (isLoadingMore = true)")
     return true
   }
 

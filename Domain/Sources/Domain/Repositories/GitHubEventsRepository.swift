@@ -10,9 +10,10 @@ import Networking
 
 public protocol GitHubEventsRepositoring {
   func listPublicEvents(
-    paginationState: PaginationState
+    paginationState: PaginationState,
+    filter: Set<EventTypeFilter>
   ) async throws(NetworkError) -> (data: [EventItem], paginationInfo: PaginationInfo)
-  func listLatestPublicEvents(perPage: Int) async throws(NetworkError) -> [EventItem]
+  func listLatestPublicEvents(perPage: Int, filter: Set<EventTypeFilter>) async throws(NetworkError) -> [EventItem]
 }
 
 public final class GitHubEventsRepository: GitHubEventsRepositoring {
@@ -23,7 +24,8 @@ public final class GitHubEventsRepository: GitHubEventsRepositoring {
   }
 
   public func listPublicEvents(
-    paginationState: PaginationState
+    paginationState: PaginationState,
+    filter: Set<EventTypeFilter>
   ) async throws(NetworkError) -> (data: [EventItem], paginationInfo: PaginationInfo) {
 
     let urlToRequest: URL
@@ -40,10 +42,23 @@ public final class GitHubEventsRepository: GitHubEventsRepositoring {
 
     let result: (data: [EventItem], paginationInfo: PaginationInfo) = try await apiClient.requestWithPagination(service)
 
-    return result
+    let allowedTypeStrings = Set(filter.map { $0.rawValue })
+
+    let filteredData = result.data.filter { event in
+      allowedTypeStrings.contains(event.type)
+    }
+
+    return (filteredData, result.paginationInfo)
   }
 
-  public func listLatestPublicEvents(perPage: Int) async throws(NetworkError) -> [EventItem] {
-    try await apiClient.request(GitHubEventsService.listLatestPublicEvents(perPage: perPage))
+  public func listLatestPublicEvents(perPage: Int, filter: Set<EventTypeFilter>) async throws(NetworkError) -> [EventItem] {
+    let data: [EventItem] = try await apiClient.request(GitHubEventsService.listLatestPublicEvents(perPage: perPage))
+    let allowedTypeStrings = Set(filter.map { $0.rawValue })
+
+    let filteredItems = data.filter { event in
+      allowedTypeStrings.contains(event.type)
+    }
+
+    return filteredItems
   }
 }

@@ -42,6 +42,10 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   private let apiClient = APIClient()
   private let repository: GitHubEventsRepositoring
 
+  private let selectEventFilters: Set<EventTypeFilter> = [
+    .pullRequest, .push, .issues, .public, .watch
+  ]
+
   override init() {
     var capturedContinuation: AsyncStream<Actions?>.Continuation?
     stream = AsyncStream { continuation in
@@ -59,7 +63,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     print("Deinit ProductListingViewModel")
     refreshTimerTask?.cancel()
     actionContinuation?.finish()
-    actionContinuation = nil // Optional cleanup
+    actionContinuation = nil
   }
 
   // MARK: - Inputs
@@ -91,13 +95,16 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   private func fetchAndApplyInitialData() async {
     await paginationState.reset()
     await paginationState.setIsLoading(true)
+
     send(action: .updatePaginationState(isLoading: true))
     await fetchPaginatedData(isInitialLoad: true)
   }
 
   private func triggerLoadMoreData() async {
     let didStartLoading = await paginationState.startLoadingIfNeeded()
+
     guard didStartLoading else { return }
+
     send(action: .updatePaginationState(isLoading: true))
     await fetchPaginatedData(isInitialLoad: false)
   }
@@ -108,7 +115,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     var fetchError: Error? = nil
 
     do {
-      let dataResult = try await repository.listPublicEvents(paginationState: paginationState)
+      let dataResult = try await repository.listPublicEvents(paginationState: paginationState, filter: selectEventFilters)
       fetchedItems = dataResult.data
       fetchedPaginationInfo = dataResult.paginationInfo
       try Task.checkCancellation()
@@ -129,7 +136,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
     await paginationState.finishedLoading(success: success, hasMoreData: canLoadMore, nextURL: nextURL)
 
-    // Only hide pagination spinner (not initial load indicator unless error)
+    /// Only hide pagination spinner (not initial load indicator unless error)
     if !isInitialLoad || fetchError != nil {
       send(action: .updatePaginationState(isLoading: false))
     }
@@ -138,7 +145,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   private func fetchLatestEvents() async {
     do {
       let perPage = PaginationState.perPage
-      let latestItems = try await repository.listLatestPublicEvents(perPage: perPage)
+      let latestItems = try await repository.listLatestPublicEvents(perPage: perPage, filter: selectEventFilters)
       try Task.checkCancellation()
       if !latestItems.isEmpty {
         let configurationItems = latestItems.enumerated().map { index, element in

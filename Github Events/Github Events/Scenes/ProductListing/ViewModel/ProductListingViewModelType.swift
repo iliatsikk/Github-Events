@@ -10,7 +10,7 @@ import Foundation
 @MainActor
 extension ProductListingViewController {
   enum ViewActions: Sendable {
-    case testForBinding
+    case applyItems([DataSourceItem])
   }
 }
 

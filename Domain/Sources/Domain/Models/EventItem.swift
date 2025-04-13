@@ -14,6 +14,12 @@ public struct EventItem: Codable {
   public let repo: Repo
   public let createdAt: String
 
+  public var actorImageURL: URL? {
+    guard let string = actor.avatarUrl else { return nil }
+
+    return URL(string: string)
+  }
+
   enum CodingKeys: String, CodingKey {
     case id, type, actor, repo
     case createdAt = "created_at"
@@ -22,13 +28,7 @@ public struct EventItem: Codable {
   public struct Actor: Codable {
     public let id: Int
     public let login: String
-    public let avatarUrl: URL?
-
-    public init(id: Int, login: String, avatarUrl: URL?) {
-      self.id = id
-      self.login = login
-      self.avatarUrl = avatarUrl
-    }
+    public let avatarUrl: String?
 
     enum CodingKeys: String, CodingKey {
       case id, login
@@ -39,11 +39,6 @@ public struct EventItem: Codable {
   public struct Repo: Codable {
     public let id: Int
     public let name: String
-
-    public init(id: Int, name: String) {
-      self.id = id
-      self.name = name
-    }
   }
 }
 

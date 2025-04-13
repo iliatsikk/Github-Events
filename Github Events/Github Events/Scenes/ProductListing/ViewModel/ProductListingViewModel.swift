@@ -9,43 +9,34 @@ import Foundation
 import Networking
 import Domain
 import UIKit
+import Interface
 
 enum Section: Hashable {
   case listing
 }
 
-struct ProductItem: Hashable, Identifiable, Equatable {
-  let id = UUID()
-  let imageName: String
-  let title: String
-  let description: String?
-
-  static let placeholderImageName = "photo.fill"
-
-  static func testData() -> [ProductItem] {
-    return [
-      ProductItem(imageName: "swift", title: "Swift Book", description: "Learn the Swift language"),
-      ProductItem(imageName: "keyboard", title: "Magic Keyboard", description: "With Touch ID"),
-      ProductItem(imageName: "macpro.gen3", title: "Mac Pro", description: "Powerhouse desktop"),
-      ProductItem(imageName: "display", title: "Studio Display", description: "5K Retina"),
-      ProductItem(imageName: "iphone", title: "iPhone 15 Pro", description: "Titanium frame"),
-      ProductItem(imageName: "ipad", title: "iPad Air", description: "M2 Chip"),
-      ProductItem(imageName: "airpodsmax", title: "AirPods Max", description: "High-fidelity audio"),
-      ProductItem(imageName: "applewatch.ultra", title: "Apple Watch Ultra 2", description: "Adventure awaits")
-    ]
+extension EventItem {
+  func toConfigurationItem() -> ProductListingItemContentView.Configuration {
+    return .init(
+      id: id,
+      imageURL: actorImageURL,
+      title: repo.name,
+      description: type
+    )
   }
 }
 
 @MainActor
 final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, ProductListingViewModelOutputs {
   typealias Actions = ProductListingViewController.ViewActions
+  typealias DataSourceItem = ProductListingViewController.DataSourceItem
 
   let stream: AsyncStream<Actions?>
 
-  private var actionContinuation: AsyncStream<ProductListingViewController.ViewActions?>.Continuation?
+  private var actionContinuation: AsyncStream<Actions?>.Continuation?
 
   override init() {
-    var capturedContinuation: AsyncStream<ProductListingViewController.ViewActions?>.Continuation?
+    var capturedContinuation: AsyncStream<Actions?>.Continuation?
     stream = AsyncStream { continuation in
       capturedContinuation = continuation
     }
@@ -74,9 +65,9 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       do {
         let data = try await repository.listPublicEvents(perPage: 10, page: 1)
 
-        try await Task.sleep(nanoseconds: 2_000_000_000)
-        self?.send(action: .testForBinding)
-        print("*** \(data)")
+        let configurationItems = data.map({ $0.toConfigurationItem() })
+
+        self?.send(action: .applyItems(configurationItems))
       } catch {
         print("*** \(error)")
       }

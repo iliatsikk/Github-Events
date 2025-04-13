@@ -53,7 +53,7 @@ public struct ProductListingItemContentView: View {
       alignment: .leading
     )
     .padding(8.0.scaledWidth)
-    .background(Color(.red))
+    .background(configuration.backgroundColor.opacity(0.9))
     .cornerRadius(10)
   }
 }
@@ -64,7 +64,8 @@ public struct ProductListingItemContentView: View {
       id: "uuid",
       imageURL: URL(string: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTPQzg2-modiBeSBIckt_NcpipPPGQfZA_dbQ&s"),
       title: "Something title 1 Something title 1 Something title 1",
-      description: "desc"
+      description: "desc",
+      index: .zero
     )
   )
   .frame(

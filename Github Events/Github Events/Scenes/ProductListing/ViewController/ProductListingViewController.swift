@@ -40,7 +40,7 @@ class ProductListingViewController: UIViewController {
   
   override func viewDidLoad() {
     super.viewDidLoad()
-    view.backgroundColor = .systemBackground
+    view.backgroundColor = UIColor.System.background
     title = "Products"
 
     bind()
@@ -85,6 +85,7 @@ class ProductListingViewController: UIViewController {
     collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
     collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     collectionView.delegate = self
+    collectionView.backgroundColor = UIColor.System.background
     view.addSubview(collectionView)
 
     collectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -103,14 +104,14 @@ class ProductListingViewController: UIViewController {
     let layout = UICollectionViewCompositionalLayout { sectionIndex, layoutEnvironment -> NSCollectionLayoutSection? in
       let itemSize = NSCollectionLayoutSize(
         widthDimension: .fractionalWidth(0.5),
-        heightDimension: .absolute(160.0.scaledWidth)
+        heightDimension: .absolute(165.0.scaledWidth)
       )
 
       let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
       let groupSize = NSCollectionLayoutSize(
         widthDimension: .fractionalWidth(1.0),
-        heightDimension: .absolute(160.0.scaledWidth)
+        heightDimension: .absolute(165.0.scaledWidth)
       )
       let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 2)
       group.contentInsets = NSDirectionalEdgeInsets(

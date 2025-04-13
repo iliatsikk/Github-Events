@@ -16,12 +16,13 @@ enum Section: Hashable {
 }
 
 extension EventItem {
-  func toConfigurationItem() -> ProductListingItemContentView.Configuration {
+  func toConfigurationItem(index: Int) -> ProductListingItemContentView.Configuration {
     return .init(
       id: id,
       imageURL: actorImageURL,
       title: repo.name,
-      description: type
+      description: type,
+      index: index
     )
   }
 }
@@ -65,7 +66,9 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       do {
         let data = try await repository.listPublicEvents(perPage: 10, page: 1)
 
-        let configurationItems = data.map({ $0.toConfigurationItem() })
+        let configurationItems = data.enumerated().map({ index, element in
+          element.toConfigurationItem(index: index)
+        })
 
         self?.send(action: .applyItems(configurationItems))
       } catch {

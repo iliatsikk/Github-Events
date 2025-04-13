@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import Presentation
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
   var window: UIWindow?
@@ -14,8 +15,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     guard let windowScene = (scene as? UIWindowScene) else { return }
 
     let window = UIWindow(windowScene: windowScene)
-    window.rootViewController = RootViewController()
 
+    let rootViewController = RootViewController()
+    window.rootViewController = TransparentNavigationController(rootViewController: rootViewController)
     self.window = window
     window.makeKeyAndVisible()
   }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04BF130B2DABAFC100C3463C /* Presentation in Frameworks */ = {isa = PBXBuildFile; productRef = 04BF130A2DABAFC100C3463C /* Presentation */; };
 		23328C162DA9862400EA5C24 /* Domain in Frameworks */ = {isa = PBXBuildFile; productRef = 23328C152DA9862400EA5C24 /* Domain */; };
 		23328C182DA9862800EA5C24 /* Networking in Frameworks */ = {isa = PBXBuildFile; productRef = 23328C172DA9862800EA5C24 /* Networking */; };
 		239BA5E82DA8DFE5000C91EA /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 239BA5E72DA8DFE5000C91EA /* Alamofire */; };
@@ -14,6 +15,7 @@
 
 /* Begin PBXFileReference section */
 		04A53AE32DA82E5A009DE8CD /* Github Events.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Github Events.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		04BF13092DABAE0A00C3463C /* Presentation */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Presentation; path = /Users/iliatsikk/Desktop/Presentation; sourceTree = "<absolute>"; };
 		23328B642DA981C900EA5C24 /* Domain */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Domain; path = ../Domain; sourceTree = SOURCE_ROOT; };
 		239BA5E52DA8DF7D000C91EA /* Networking */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = Networking; path = ../Networking; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
@@ -44,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				04BF130B2DABAFC100C3463C /* Presentation in Frameworks */,
 				23328C182DA9862800EA5C24 /* Networking in Frameworks */,
 				23328C162DA9862400EA5C24 /* Domain in Frameworks */,
 				239BA5E82DA8DFE5000C91EA /* Alamofire in Frameworks */,
@@ -56,6 +59,7 @@
 		04A53ADA2DA82E5A009DE8CD = {
 			isa = PBXGroup;
 			children = (
+				04BF13092DABAE0A00C3463C /* Presentation */,
 				23328B642DA981C900EA5C24 /* Domain */,
 				239BA5E52DA8DF7D000C91EA /* Networking */,
 				04A53AE52DA82E5A009DE8CD /* Github Events */,
@@ -102,6 +106,7 @@
 				239BA5E72DA8DFE5000C91EA /* Alamofire */,
 				23328C152DA9862400EA5C24 /* Domain */,
 				23328C172DA9862800EA5C24 /* Networking */,
+				04BF130A2DABAFC100C3463C /* Presentation */,
 			);
 			productName = "Github Events";
 			productReference = 04A53AE32DA82E5A009DE8CD /* Github Events.app */;
@@ -373,6 +378,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		04BF130A2DABAFC100C3463C /* Presentation */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Presentation;
+		};
 		23328C152DA9862400EA5C24 /* Domain */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Domain;

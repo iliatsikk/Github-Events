@@ -25,6 +25,10 @@ class RootViewController: UIViewController {
     Task {
       do {
         let data = try await repository.listPublicEvents(perPage: 10, page: 1)
+
+        let vc = UIViewController()
+        vc.view.backgroundColor = .orange
+        navigationController?.pushViewController(vc, animated: true)
         print("*** \(data)")
       } catch {
         print("*** \(error)")

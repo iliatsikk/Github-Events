@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 
 @MainActor
 extension ProductListingViewController {
@@ -17,6 +18,7 @@ extension ProductListingViewController {
 @MainActor
 protocol ProductListingViewModelInputs {
   func viewDidLoad()
+  func checkScrollPositionAndTriggerLoadIfNeeded(_ scrollView: UIScrollView) async
 }
 
 @MainActor

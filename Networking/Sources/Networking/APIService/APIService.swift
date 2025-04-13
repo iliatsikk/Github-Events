@@ -10,6 +10,7 @@ import Alamofire
 
 public protocol APIService: URLRequestConvertible {
   var path: String { get }
+  var directPathURL: URL? { get }
   var method: HTTPMethod { get }
   var parameters: Parameters? { get }
   var queryParameters: Parameters? { get }
@@ -20,6 +21,7 @@ public extension APIService {
   var parameters: Parameters? { return nil }
   var queryParameters: Parameters? { return nil }
   var headers: HTTPHeaders? { return nil }
+  var directPathURL: URL? { return nil }
 
   func asURLRequest() throws -> URLRequest {
     guard let baseURL = URL(string: APIConfig.baseURL) else {
@@ -27,10 +29,10 @@ public extension APIService {
     }
 
     let url = baseURL.appendingPathComponent(path)
-    var urlRequest = URLRequest(url: url)
+    var urlRequest = URLRequest(url: directPathURL ?? url)
     urlRequest.httpMethod = method.rawValue
 
-    if let headers = headers {
+    if let headers {
       headers.forEach { header in
         urlRequest.headers.add(header)
       }

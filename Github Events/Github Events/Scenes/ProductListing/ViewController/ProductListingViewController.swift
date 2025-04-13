@@ -158,9 +158,12 @@ class ProductListingViewController: UIViewController {
 
   @MainActor
   private func applyInitialSnapshot(_ items: [DataSourceItem]) {
-    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
+    guard var snapshot = dataSource?.snapshot() else { return }
 
-    snapshot.appendSections([.listing])
+    if !snapshot.sectionIdentifiers.contains(.listing) {
+      snapshot.appendSections([.listing])
+    }
+
     snapshot.appendItems(items, toSection: .listing)
 
     dataSource?.apply(snapshot, animatingDifferences: false)
@@ -171,5 +174,11 @@ extension ProductListingViewController: UICollectionViewDelegate {
   func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
     guard let item = dataSource?.itemIdentifier(for: indexPath) else { return }
     print("Selected: \(item.title)")
+  }
+
+  func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    Task { [weak self] in
+      await self?.viewModel.inputs.checkScrollPositionAndTriggerLoadIfNeeded(scrollView)
+    }
   }
 }

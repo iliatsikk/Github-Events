@@ -60,7 +60,7 @@ public final class APIClient: @unchecked Sendable {
 
   public func requestWithPagination<T: Decodable & Sendable>(
     _ service: some APIService
-  ) async throws(NetworkError)  -> (data: T, hasNextPage: Bool, nextPageURL: URL?) {
+  ) async throws(NetworkError) -> (data: T, paginationInfo: PaginationInfo) {
     do {
       let dataRequest = session
         .request(service)
@@ -68,12 +68,12 @@ public final class APIClient: @unchecked Sendable {
 
       let dataResponse: AFDataResponse<Data> = await dataRequest.serializingData().response
 
-      var hasNextPage = false
+      var canLoadMore = false
       var nextPageURL: URL? = nil
 
       if let linkHeader = dataResponse.response?.allHeaderFields["Link"] as? String {
         let links = parseLinkHeader(linkHeader)
-        hasNextPage = links["next"] != nil
+        canLoadMore = links["next"] != nil
         if let nextURLString = links["next"] {
           nextPageURL = URL(string: nextURLString)
         }
@@ -81,7 +81,8 @@ public final class APIClient: @unchecked Sendable {
 
       let value: T = try await dataRequest.serializingDecodable(T.self).value
 
-      return (data: value, hasNextPage: hasNextPage, nextPageURL: nextPageURL)
+      return (data: value, paginationInfo: PaginationInfo(canLoadMore: canLoadMore, nextPageURL: nextPageURL))
+
     } catch let afError as AFError {
       throw NetworkError.afError(afError)
     } catch let decodingError as DecodingError {

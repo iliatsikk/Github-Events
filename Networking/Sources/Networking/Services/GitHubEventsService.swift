@@ -9,14 +9,13 @@ import Foundation
 import Alamofire
 
 public enum GitHubEventsService {
-  case listPublicEvents(perPage: Int?, page: Int?)
+  case listPublicEvents(directURL: URL?)
 }
 
 extension GitHubEventsService: APIService {
   public var path: String {
     switch self {
-    case .listPublicEvents:
-      return "/events"
+    case .listPublicEvents: "/events"
     }
   }
 
@@ -24,19 +23,9 @@ extension GitHubEventsService: APIService {
     return .get
   }
 
-  public var queryParameters: Parameters? {
+  public var directPathURL: URL? {
     switch self {
-    case .listPublicEvents(let perPage, let page):
-      var params: [String: Sendable] = [:]
-
-      if let perPage {
-        params["per_page"] = perPage
-      }
-
-      if let page {
-        params["page"] = page
-      }
-      return params.isEmpty ? .none : params
+    case .listPublicEvents(let url): url
     }
   }
 }

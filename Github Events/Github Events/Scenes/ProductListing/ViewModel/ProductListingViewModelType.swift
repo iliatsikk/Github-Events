@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import Domain
 
 @MainActor
 extension ProductListingViewController {
@@ -21,11 +22,13 @@ extension ProductListingViewController {
 protocol ProductListingViewModelInputs {
   func viewDidLoad()
   func checkScrollPositionAndTriggerLoadIfNeeded(_ scrollView: UIScrollView) async
+  func applyFilter(_ filters: Set<EventTypeFilter>)
 }
 
 @MainActor
 protocol ProductListingViewModelOutputs {
   var stream: AsyncStream<ProductListingViewController.ViewActions?> { get }
+  var currentFilters: Set<EventTypeFilter> { get }
 }
 
 @MainActor

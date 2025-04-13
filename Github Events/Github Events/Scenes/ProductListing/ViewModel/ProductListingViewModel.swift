@@ -33,6 +33,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   typealias DataSourceItem = ProductListingViewController.DataSourceItem
 
   let stream: AsyncStream<Actions?>
+  var currentFilters: Set<EventTypeFilter> = Set(EventTypeFilter.allCases)
+
   private var actionContinuation: AsyncStream<Actions?>.Continuation?
   private let paginationState: PaginationState = .init()
 
@@ -41,10 +43,6 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
   private let apiClient = APIClient()
   private let repository: GitHubEventsRepositoring
-
-  private let selectEventFilters: Set<EventTypeFilter> = [
-    .pullRequest, .push, .issues, .public, .watch
-  ]
 
   override init() {
     var capturedContinuation: AsyncStream<Actions?>.Continuation?
@@ -90,6 +88,14 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     }
   }
 
+  func applyFilter(_ filters: Set<EventTypeFilter>) {
+    self.currentFilters = filters
+
+    Task { [weak self] in
+      await self?.fetchAndApplyInitialData()
+    }
+  }
+
   // MARK: - Data Fetching / Actions
 
   private func fetchAndApplyInitialData() async {
@@ -97,6 +103,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     await paginationState.setIsLoading(true)
 
     send(action: .updatePaginationState(isLoading: true))
+
     await fetchPaginatedData(isInitialLoad: true)
   }
 
@@ -106,6 +113,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     guard didStartLoading else { return }
 
     send(action: .updatePaginationState(isLoading: true))
+
     await fetchPaginatedData(isInitialLoad: false)
   }
 
@@ -115,7 +123,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     var fetchError: Error? = nil
 
     do {
-      let dataResult = try await repository.listPublicEvents(paginationState: paginationState, filter: selectEventFilters)
+      let dataResult = try await repository.listPublicEvents(paginationState: paginationState, filter: currentFilters)
       fetchedItems = dataResult.data
       fetchedPaginationInfo = dataResult.paginationInfo
       try Task.checkCancellation()
@@ -145,7 +153,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   private func fetchLatestEvents() async {
     do {
       let perPage = PaginationState.perPage
-      let latestItems = try await repository.listLatestPublicEvents(perPage: perPage, filter: selectEventFilters)
+      let latestItems = try await repository.listLatestPublicEvents(perPage: perPage, filter: currentFilters)
       try Task.checkCancellation()
       if !latestItems.isEmpty {
         let configurationItems = latestItems.enumerated().map { index, element in

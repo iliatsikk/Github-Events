@@ -22,5 +22,7 @@ public extension UIColor {
     public static let purple: UIColor =  UIColor(named: "\(namespace)/purple", in: .module, compatibleWith: nil) ?? .clear
 
     public static let background: UIColor =  UIColor(named: "\(namespace)/background", in: .module, compatibleWith: nil) ?? .clear
+
+    public static let text: UIColor =  UIColor(named: "\(namespace)/text", in: .module, compatibleWith: nil) ?? .clear
   }
 }

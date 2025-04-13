@@ -22,5 +22,7 @@ public extension Color {
     public static let violet: Color = Color("\(namespace)/violet", bundle: .module)
 
     public static let pink: Color = Color("\(namespace)/pink", bundle: .module)
+
+    public static let text: Color = Color("\(namespace)/text", bundle: .module)
   }
 }

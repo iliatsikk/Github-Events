@@ -45,9 +45,39 @@ class ProductListingViewController: UIViewController {
     view.backgroundColor = UIColor.System.background
     title = "Products"
 
+    setupNavigationBar()
     bind()
     configureCollectionView()
     configureDataSource()
+  }
+
+  // MARK: - Navigation bar setup
+
+  private func setupNavigationBar() {
+    let filterButton = UIBarButtonItem(
+      image: UIImage(systemName: "line.3.horizontal.decrease"),
+      style: .plain,
+      target: self,
+      action: #selector(filterButtonTapped)
+    )
+
+    filterButton.tintColor = UIColor.System.text
+
+    navigationItem.rightBarButtonItem = filterButton
+  }
+
+  // MARK: - Actions
+
+  @objc private func filterButtonTapped() {
+    let currentFilters = viewModel.outputs.currentFilters
+    let filterModalViewController = FilterModalViewController(initialFilters: currentFilters)
+    filterModalViewController.delegate = self
+
+    let navController = UINavigationController(rootViewController: filterModalViewController)
+    navController.modalPresentationStyle = .formSheet
+    navController.sheetPresentationController?.detents = [.medium()]
+
+    present(navController, animated: true, completion: nil)
   }
 
   // MARK: - Binding
@@ -74,7 +104,7 @@ class ProductListingViewController: UIViewController {
   private func handle(action: ViewActions?) {
     switch action {
     case .applyItems(let items):
-      applySnapshot(items)
+      applyAppendOrReplaceSnapshot(items: items)
     case .attachItems(let items):
       applySnapshot(itemsToAttach: items)
     case .updatePaginationState(let isLoading):
@@ -202,24 +232,25 @@ class ProductListingViewController: UIViewController {
   // MARK: - Snapshot Update
 
   @MainActor
-  private func applySnapshot(_ items: [DataSourceItem]) {
-    guard var snapshot = dataSource?.snapshot() else { return }
+  private func applyAppendOrReplaceSnapshot(items: [DataSourceItem]) {
+    guard let dataSource else { return }
+    var snapshot = dataSource.snapshot()
 
-    if snapshot.sectionIdentifiers.isEmpty {
-      snapshot.appendSections([.listing])
-    }
+    let isDataSourceEmpty = snapshot.numberOfItems == 0
 
-    /// only new items are appended
-    let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
-    let newItems = items.filter { !existingItems.contains($0) }
-
-    if !newItems.isEmpty {
-      snapshot.appendItems(newItems, toSection: .listing)
-
-      dataSource?.apply(snapshot, animatingDifferences: true)
-    } else if snapshot.numberOfItems == 0 && !items.isEmpty { /// initial items without animation
+    if isDataSourceEmpty {
+      if !snapshot.sectionIdentifiers.contains(.listing) {
+        snapshot.appendSections([.listing])
+      }
       snapshot.appendItems(items, toSection: .listing)
-      dataSource?.apply(snapshot, animatingDifferences: false)
+      dataSource.apply(snapshot, animatingDifferences: false)
+    } else {
+      let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
+      let newItems = items.filter { !existingItems.contains($0) }
+      if !newItems.isEmpty {
+        snapshot.appendItems(newItems, toSection: .listing)
+        dataSource.apply(snapshot, animatingDifferences: true)
+      }
     }
   }
 
@@ -267,6 +298,13 @@ class ProductListingViewController: UIViewController {
 
     dataSource.apply(currentSnapshot, animatingDifferences: false)
   }
+
+  @MainActor
+  private func clearSnapshot() {
+    guard let dataSource = dataSource else { return }
+    let snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
+    dataSource.apply(snapshot, animatingDifferences: false)
+  }
 }
 
 extension ProductListingViewController: UICollectionViewDelegate {
@@ -279,5 +317,15 @@ extension ProductListingViewController: UICollectionViewDelegate {
     Task { [weak self] in
       await self?.viewModel.inputs.checkScrollPositionAndTriggerLoadIfNeeded(scrollView)
     }
+  }
+}
+
+extension ProductListingViewController: FilterModalDelegate {
+  func filterModalDidSave(selectedFilters: Set<EventTypeFilter>) {
+    guard selectedFilters != viewModel.outputs.currentFilters else { return }
+
+    clearSnapshot()
+
+    viewModel.inputs.applyFilter(selectedFilters)
   }
 }

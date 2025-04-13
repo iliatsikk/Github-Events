@@ -74,7 +74,9 @@ class ProductListingViewController: UIViewController {
   private func handle(action: ViewActions?) {
     switch action {
     case .applyItems(let items):
-      applyUpdateSnapshot(items)
+      applySnapshot(items)
+    case .attachItems(let items):
+      applySnapshot(itemsToAttach: items)
     case .updatePaginationState(let isLoading):
       isPaginating = isLoading
       reloadFooterState()
@@ -200,7 +202,7 @@ class ProductListingViewController: UIViewController {
   // MARK: - Snapshot Update
 
   @MainActor
-  private func applyUpdateSnapshot(_ items: [DataSourceItem]) {
+  private func applySnapshot(_ items: [DataSourceItem]) {
     guard var snapshot = dataSource?.snapshot() else { return }
 
     if snapshot.sectionIdentifiers.isEmpty {
@@ -219,6 +221,37 @@ class ProductListingViewController: UIViewController {
       snapshot.appendItems(items, toSection: .listing)
       dataSource?.apply(snapshot, animatingDifferences: false)
     }
+  }
+
+  @MainActor
+  private func applySnapshot(itemsToAttach items: [DataSourceItem]) {
+    guard let dataSource else { return }
+
+    var snapshot = dataSource.snapshot()
+
+    guard snapshot.sectionIdentifiers.contains(.listing) else {
+      if snapshot.numberOfSections == 0 {
+        snapshot.appendSections([.listing])
+        snapshot.appendItems(items, toSection: .listing)
+        dataSource.apply(snapshot, animatingDifferences: false)
+      }
+      return
+    }
+
+    let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
+    let newItems = items.filter { !existingItems.contains($0) }
+
+    guard !newItems.isEmpty else {
+      return
+    }
+
+    if let firstItem = snapshot.itemIdentifiers(inSection: .listing).first {
+      snapshot.insertItems(newItems, beforeItem: firstItem)
+    } else {
+      snapshot.appendItems(newItems, toSection: .listing)
+    }
+
+    dataSource.apply(snapshot, animatingDifferences: true)
   }
 
   @MainActor

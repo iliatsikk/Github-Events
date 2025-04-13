@@ -33,12 +33,14 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   typealias DataSourceItem = ProductListingViewController.DataSourceItem
 
   let stream: AsyncStream<Actions?>
-
   private var actionContinuation: AsyncStream<Actions?>.Continuation?
+  private let paginationState: PaginationState = .init()
 
-  private var paginationState: PaginationState = .init()
+  private var refreshTimerTask: Task<Void, Never>? = nil
+  private let refreshInterval: TimeInterval = 10.0
 
-  private var scrollCheckTask: Task<Void, Never>? = nil
+  private let apiClient = APIClient()
+  private let repository: GitHubEventsRepositoring
 
   override init() {
     var capturedContinuation: AsyncStream<Actions?>.Continuation?
@@ -47,22 +49,24 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     }
 
     actionContinuation = capturedContinuation
+    repository = GitHubEventsRepository(apiClient: apiClient)
+
+    super.init()
+    startRefreshTimer()
   }
 
   deinit {
-    actionContinuation?.finish()
-    scrollCheckTask?.cancel()
-    scrollCheckTask = nil
-    actionContinuation = nil
-
     print("Deinit ProductListingViewModel")
+    refreshTimerTask?.cancel()
+    actionContinuation?.finish()
+    actionContinuation = nil // Optional cleanup
   }
 
   // MARK: - Inputs
 
   func viewDidLoad() {
     Task { [weak self] in
-      await self?.getData()
+      await self?.fetchAndApplyInitialData()
     }
   }
 
@@ -78,37 +82,45 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     let threshold = frameHeight * 1.0
 
     if distanceToBottom <= threshold {
-      await didReachToBottom()
+      await triggerLoadMoreData()
     }
   }
 
-  // MARK: - Repository
+  // MARK: - Data Fetching / Actions
 
-  private func getData() async {
-    let apiClient = APIClient()
-    let repository: GitHubEventsRepositoring = GitHubEventsRepository(apiClient: apiClient)
+  private func fetchAndApplyInitialData() async {
+    await paginationState.reset()
+    await paginationState.setIsLoading(true)
+    send(action: .updatePaginationState(isLoading: true))
+    await fetchPaginatedData(isInitialLoad: true)
+  }
 
+  private func triggerLoadMoreData() async {
+    let didStartLoading = await paginationState.startLoadingIfNeeded()
+    guard didStartLoading else { return }
+    send(action: .updatePaginationState(isLoading: true))
+    await fetchPaginatedData(isInitialLoad: false)
+  }
+
+  private func fetchPaginatedData(isInitialLoad: Bool) async {
     var fetchedItems: [EventItem]? = nil
     var fetchedPaginationInfo: PaginationInfo? = nil
     var fetchError: Error? = nil
 
     do {
       let dataResult = try await repository.listPublicEvents(paginationState: paginationState)
-
       fetchedItems = dataResult.data
       fetchedPaginationInfo = dataResult.paginationInfo
-
       try Task.checkCancellation()
 
       let configurationItems = fetchedItems!.enumerated().map { index, element in
         element.toConfigurationItem(index: index)
       }
-
       try Task.checkCancellation()
-
       send(action: .applyItems(configurationItems))
     } catch {
       fetchError = error
+      print(error)
     }
 
     let success = (fetchError == nil && fetchedPaginationInfo != nil)
@@ -117,24 +129,56 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
     await paginationState.finishedLoading(success: success, hasMoreData: canLoadMore, nextURL: nextURL)
 
-    send(action: .updatePaginationState(isLoading: false))
+    // Only hide pagination spinner (not initial load indicator unless error)
+    if !isInitialLoad || fetchError != nil {
+      send(action: .updatePaginationState(isLoading: false))
+    }
+  }
+
+  private func fetchLatestEvents() async {
+    do {
+      let perPage = PaginationState.perPage
+      let latestItems = try await repository.listLatestPublicEvents(perPage: perPage)
+      try Task.checkCancellation()
+      if !latestItems.isEmpty {
+        let configurationItems = latestItems.enumerated().map { index, element in
+          element.toConfigurationItem(index: index)
+        }
+        send(action: .attachItems(configurationItems))
+      }
+    } catch {
+      print(error)
+    }
+  }
+
+  // MARK: - Timer Management
+
+  private func startRefreshTimer() {
+    stopRefreshTimer()
+    refreshTimerTask = Task { [weak self] in
+      guard let self = self else { return }
+      while !Task.isCancelled {
+        do {
+          try await Task.sleep(for: .seconds(refreshInterval))
+          try Task.checkCancellation()
+          await self.fetchLatestEvents()
+        } catch is CancellationError {
+          break
+        } catch {
+          try? await Task.sleep(for: .seconds(refreshInterval * 2))
+        }
+      }
+    }
+  }
+
+  private func stopRefreshTimer() {
+    refreshTimerTask?.cancel()
+    refreshTimerTask = nil
   }
 
   // MARK: - Private Implementations
 
   private func send(action: ProductListingViewController.ViewActions?) {
     actionContinuation?.yield(action)
-  }
-
-  private func didReachToBottom() async {
-    let didStartLoading = await paginationState.startLoadingIfNeeded()
-
-    guard didStartLoading else {
-      return
-    }
-
-    send(action: .updatePaginationState(isLoading: true))
-
-    await getData()
   }
 }

@@ -45,11 +45,22 @@ public actor PaginationState: Sendable {
     }
   }
 
+  public func reset() {
+    self.isLoadingMore = false
+    self.canLoadMore = true
+    self.nextPageURL = nil
+    self.currentPage = 0
+  }
+
+  public func setIsLoading(_ isLoading: Bool) {
+    self.isLoadingMore = isLoading
+  }
+
   public init(
     isLoadingMore: Bool = false,
     canLoadMore: Bool = true,
     nextPageURL: URL? = nil,
-    currentPage: Int = 1
+    currentPage: Int = 0
   ) {
     self.isLoadingMore = isLoadingMore
     self.canLoadMore = canLoadMore

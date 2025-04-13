@@ -12,6 +12,7 @@ public protocol GitHubEventsRepositoring {
   func listPublicEvents(
     paginationState: PaginationState
   ) async throws(NetworkError) -> (data: [EventItem], paginationInfo: PaginationInfo)
+  func listLatestPublicEvents(perPage: Int) async throws(NetworkError) -> [EventItem]
 }
 
 public final class GitHubEventsRepository: GitHubEventsRepositoring {
@@ -25,7 +26,6 @@ public final class GitHubEventsRepository: GitHubEventsRepositoring {
     paginationState: PaginationState
   ) async throws(NetworkError) -> (data: [EventItem], paginationInfo: PaginationInfo) {
 
-    // Determine the URL to request
     let urlToRequest: URL
     if let nextURL = await paginationState.nextPageURL {
       urlToRequest = nextURL
@@ -41,5 +41,9 @@ public final class GitHubEventsRepository: GitHubEventsRepositoring {
     let result: (data: [EventItem], paginationInfo: PaginationInfo) = try await apiClient.requestWithPagination(service)
 
     return result
+  }
+
+  public func listLatestPublicEvents(perPage: Int) async throws(NetworkError) -> [EventItem] {
+    try await apiClient.request(GitHubEventsService.listLatestPublicEvents(perPage: perPage))
   }
 }

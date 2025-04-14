@@ -29,6 +29,7 @@ protocol ProductListingViewModelInputs {
 protocol ProductListingViewModelOutputs {
   var stream: AsyncStream<ProductListingViewController.ViewActions?> { get }
   var currentFilters: Set<EventTypeFilter> { get }
+  var eventItems: [EventItem] { get }
 }
 
 @MainActor

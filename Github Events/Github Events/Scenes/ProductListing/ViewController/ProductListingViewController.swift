@@ -15,7 +15,11 @@ import DesignSystem
 class ProductListingViewController: UIViewController {
   typealias DataSourceItem = ProductListingItemContentView.Configuration
 
-  private var collectionView: UICollectionView!
+  private lazy var collectionView: UICollectionView = {
+    let layout = createLayout()
+    return UICollectionView(frame: view.bounds, collectionViewLayout: layout)
+  }()
+
   private var dataSource: UICollectionViewDiffableDataSource<Section, ProductListingItemContentView.Configuration>?
 
   private let viewModel: ProductListingViewModelType
@@ -118,8 +122,6 @@ class ProductListingViewController: UIViewController {
   // MARK: - Configuration
 
   private func configureCollectionView() {
-    let layout = createLayout()
-    collectionView = UICollectionView(frame: .zero, collectionViewLayout: layout)
     collectionView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     collectionView.delegate = self
     collectionView.backgroundColor = UIColor.System.background
@@ -310,7 +312,10 @@ class ProductListingViewController: UIViewController {
 extension ProductListingViewController: UICollectionViewDelegate {
   func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
     guard let item = dataSource?.itemIdentifier(for: indexPath) else { return }
-    print("Selected: \(item.title)")
+
+    guard let eventItem = viewModel.outputs.eventItems.first(where: { $0.id == item.id }) else { return }
+
+    navigationController?.pushViewController(ProductDetailsViewController(eventItem: eventItem), animated: true)
   }
 
   func scrollViewDidScroll(_ scrollView: UIScrollView) {

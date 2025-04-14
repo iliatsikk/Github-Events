@@ -34,6 +34,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
   let stream: AsyncStream<Actions?>
   var currentFilters: Set<EventTypeFilter> = Set(EventTypeFilter.allCases)
+  var eventItems: [EventItem] = []
 
   private var actionContinuation: AsyncStream<Actions?>.Continuation?
   private let paginationState: PaginationState = .init()
@@ -102,8 +103,6 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     await paginationState.reset()
     await paginationState.setIsLoading(true)
 
-    send(action: .updatePaginationState(isLoading: true))
-
     await fetchPaginatedData(isInitialLoad: true)
   }
 
@@ -132,6 +131,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
         element.toConfigurationItem(index: index)
       }
       try Task.checkCancellation()
+
+      self.eventItems = dataResult.data
       send(action: .applyItems(configurationItems))
     } catch {
       fetchError = error
@@ -159,6 +160,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
         let configurationItems = latestItems.enumerated().map { index, element in
           element.toConfigurationItem(index: index)
         }
+
+        self.eventItems.append(contentsOf: latestItems)
         send(action: .attachItems(configurationItems))
       }
     } catch {

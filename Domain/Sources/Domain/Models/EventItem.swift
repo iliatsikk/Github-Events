@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct EventItem: Codable {
+public struct EventItem: Codable, Equatable, Sendable, Hashable {
   public let id: String
   public let type: String
   public let actor: Actor
@@ -16,8 +16,17 @@ public struct EventItem: Codable {
 
   public var actorImageURL: URL? {
     guard let string = actor.avatarUrl else { return nil }
-
     return URL(string: string)
+  }
+
+  public var formatedDate: String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+
+    guard let date = dateFormatter.date(from: createdAt) else { return "" }
+
+    dateFormatter.dateFormat = "dd MMM yyyy - HH:mm"
+    return dateFormatter.string(from: date)
   }
 
   enum CodingKeys: String, CodingKey {
@@ -25,7 +34,7 @@ public struct EventItem: Codable {
     case createdAt = "created_at"
   }
 
-  public struct Actor: Codable {
+  public struct Actor: Codable, Equatable, Sendable, Hashable {
     public let id: Int
     public let login: String
     public let avatarUrl: String?
@@ -36,12 +45,8 @@ public struct EventItem: Codable {
     }
   }
 
-  public struct Repo: Codable {
+  public struct Repo: Codable, Equatable, Sendable, Hashable {
     public let id: Int
     public let name: String
   }
 }
-
-extension EventItem: Equatable, Sendable, Hashable {}
-extension EventItem.Repo: Equatable, Sendable, Hashable {}
-extension EventItem.Actor: Equatable, Sendable, Hashable {}

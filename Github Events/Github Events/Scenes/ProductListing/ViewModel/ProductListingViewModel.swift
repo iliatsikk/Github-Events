@@ -23,10 +23,24 @@ extension EventItem {
   }
 }
 
+extension ProductListingViewModel {
+  enum ListingItem: Hashable, Identifiable {
+    case item(ProductListingItemContentView.Configuration)
+    case skeleton(id: UUID = UUID())
+
+    var id: AnyHashable {
+      switch self {
+      case .item(let config): config.id
+      case .skeleton(let id): id
+      }
+    }
+  }
+}
+
 @MainActor
 final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, ProductListingViewModelOutputs {
   typealias Actions = ProductListingViewController.ViewActions
-  typealias DataSourceItem = ProductListingViewController.DataSourceItem
+  typealias DataSourceItem = ListingItem
 
   let stream: AsyncStream<Actions?>
   var currentFilters: Set<EventTypeFilter> = Set(EventTypeFilter.allCases)
@@ -65,6 +79,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
   func viewDidLoad() {
     Task { [weak self] in
+      self?.send(action: .showSkeletons(count: PaginationState.perPage))
+
       await self?.fetchAndApplyInitialData()
     }
   }
@@ -89,6 +105,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     self.currentFilters = filters
 
     Task { [weak self] in
+      self?.send(action: .showSkeletons(count: PaginationState.perPage))
+
       await self?.fetchAndApplyInitialData()
     }
   }
@@ -126,12 +144,19 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       let configurationItems = fetchedItems!.enumerated().map { index, element in
         element.toConfigurationItem(index: index)
       }
+      let listingItems = configurationItems.map { ListingItem.item($0) }
+
       try Task.checkCancellation()
 
       self.eventItems = dataResult.data
-      send(action: .applyItems(configurationItems))
+      send(action: .applyItems(listingItems))
     } catch {
       fetchError = error
+
+      if isInitialLoad {
+        send(action: .applyItems([]))
+      }
+
       print(error)
     }
 
@@ -157,8 +182,10 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
           element.toConfigurationItem(index: index)
         }
 
-        self.eventItems.append(contentsOf: latestItems)
-        send(action: .attachItems(configurationItems))
+        let listingItems = configurationItems.map { ListingItem.item($0) }
+
+        eventItems.append(contentsOf: latestItems)
+        send(action: .attachItems(listingItems))
       }
     } catch {
       print(error)

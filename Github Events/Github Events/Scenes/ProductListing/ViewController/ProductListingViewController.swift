@@ -13,10 +13,11 @@ import Interface
 import DesignSystem
 
 class ProductListingViewController: UIViewController {
-  typealias DataSourceItem = ProductListingItemContentView.Configuration
+  typealias DataSourceItem = ProductListingViewModel.DataSourceItem
 
   private enum Section: Hashable {
     case listing
+    case skeleton
   }
 
   private lazy var collectionView: UICollectionView = {
@@ -24,7 +25,7 @@ class ProductListingViewController: UIViewController {
     return UICollectionView(frame: view.bounds, collectionViewLayout: layout)
   }()
 
-  private var dataSource: UICollectionViewDiffableDataSource<Section, ProductListingItemContentView.Configuration>?
+  private var dataSource: UICollectionViewDiffableDataSource<Section, DataSourceItem>?
 
   private let viewModel: ProductListingViewModelType
   private var bindingTask: Task<Void, Never>? = nil
@@ -111,6 +112,8 @@ class ProductListingViewController: UIViewController {
   @MainActor
   private func handle(action: ViewActions?) {
     switch action {
+    case .showSkeletons(let count):
+      applySkeletonSnapshot(count: count)
     case .applyItems(let items):
       applyAppendOrReplaceSnapshot(items: items)
     case .attachItems(let items):
@@ -150,7 +153,7 @@ class ProductListingViewController: UIViewController {
   // MARK: - Layout Creation (Compositional Layout)
 
   private func createLayout() -> UICollectionViewLayout {
-    let layout = UICollectionViewCompositionalLayout { sectionIndex, layoutEnvironment -> NSCollectionLayoutSection? in
+    let layout = UICollectionViewCompositionalLayout { _, layoutEnvironment -> NSCollectionLayoutSection? in
       let itemSize = NSCollectionLayoutSize(
         widthDimension: .fractionalWidth(0.5),
         heightDimension: .absolute(165.0.scaledWidth)
@@ -196,22 +199,35 @@ class ProductListingViewController: UIViewController {
   // MARK: - Data Source (Diffable + Cell Registration + Hosting Configuration)
 
   private func configureDataSource() {
-    let cellRegistration = UICollectionView.CellRegistration<UICollectionViewCell, DataSourceItem> { cell, indexPath, item in
+    let itemRegistration = UICollectionView.CellRegistration<UICollectionViewCell, ProductListingItemContentView.Configuration> { cell, _, item in
       cell.contentConfiguration = UIHostingConfiguration {
         ProductListingItemContentView(configuration: item)
-      }
+      }.background(.clear)
+    }
 
-      cell.backgroundConfiguration = UIBackgroundConfiguration.clear()
+    let skeletonRegistration = UICollectionView.CellRegistration<UICollectionViewCell, UUID> { cell, indexPath, itemIdentifier in
+      cell.contentConfiguration = UIHostingConfiguration {
+        ProductListingSkeletonItemContentView()
+      }.background(.clear)
     }
 
     dataSource = UICollectionViewDiffableDataSource<Section, DataSourceItem>(
       collectionView: collectionView
-    ) { (collectionView, indexPath, item) -> UICollectionViewCell? in
-      collectionView.dequeueConfiguredReusableCell(
-        using: cellRegistration,
-        for: indexPath,
-        item: item
-      )
+    ) { collectionView, indexPath, item -> UICollectionViewCell? in
+      return switch item {
+      case .item(let config):
+         collectionView.dequeueConfiguredReusableCell(
+          using: itemRegistration,
+          for: indexPath,
+          item: config
+        )
+      case .skeleton(let id):
+        collectionView.dequeueConfiguredReusableCell(
+          using: skeletonRegistration,
+          for: indexPath,
+          item: id
+        )
+      }
     }
 
     dataSource?.supplementaryViewProvider = { [weak self] (collectionView, kind, indexPath) -> UICollectionReusableView? in
@@ -238,9 +254,25 @@ class ProductListingViewController: UIViewController {
   // MARK: - Snapshot Update
 
   @MainActor
+  private func applySkeletonSnapshot(count: Int) {
+    guard let dataSource else { return }
+    let skeletonItems = (0..<count).map { _ in DataSourceItem.skeleton() }
+
+    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
+    snapshot.appendSections([.skeleton])
+    snapshot.appendItems(skeletonItems, toSection: .skeleton)
+
+    dataSource.apply(snapshot, animatingDifferences: false)
+  }
+
+  @MainActor
   private func applyAppendOrReplaceSnapshot(items: [DataSourceItem]) {
     guard let dataSource else { return }
     var snapshot = dataSource.snapshot()
+
+    if snapshot.sectionIdentifiers.contains(.skeleton) {
+      snapshot.deleteSections([.skeleton])
+    }
 
     let isDataSourceEmpty = snapshot.numberOfItems == 0
 
@@ -265,6 +297,10 @@ class ProductListingViewController: UIViewController {
     guard let dataSource else { return }
 
     var snapshot = dataSource.snapshot()
+
+    if snapshot.sectionIdentifiers.contains(.skeleton) {
+      snapshot.deleteSections([.skeleton])
+    }
 
     guard snapshot.sectionIdentifiers.contains(.listing) else {
       if snapshot.numberOfSections == 0 {
@@ -315,7 +351,9 @@ class ProductListingViewController: UIViewController {
 
 extension ProductListingViewController: UICollectionViewDelegate {
   func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-    guard let item = dataSource?.itemIdentifier(for: indexPath) else { return }
+    guard let dataSourceItem = dataSource?.itemIdentifier(for: indexPath) else { return }
+
+    guard case .item(let item) = dataSourceItem else { return }
 
     guard let eventItem = viewModel.outputs.eventItems.first(where: { $0.id == item.id }) else { return }
 

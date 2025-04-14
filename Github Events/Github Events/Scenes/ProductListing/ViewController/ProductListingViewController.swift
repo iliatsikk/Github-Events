@@ -15,6 +15,10 @@ import DesignSystem
 class ProductListingViewController: UIViewController {
   typealias DataSourceItem = ProductListingItemContentView.Configuration
 
+  private enum Section: Hashable {
+    case listing
+  }
+
   private lazy var collectionView: UICollectionView = {
     let layout = createLayout()
     return UICollectionView(frame: view.bounds, collectionViewLayout: layout)

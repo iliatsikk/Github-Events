@@ -11,10 +11,6 @@ import Domain
 import UIKit
 import Interface
 
-enum Section: Hashable {
-  case listing
-}
-
 extension EventItem {
   func toConfigurationItem(index: Int) -> ProductListingItemContentView.Configuration {
     return .init(

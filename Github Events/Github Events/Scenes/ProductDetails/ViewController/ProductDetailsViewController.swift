@@ -138,23 +138,23 @@ class ProductDetailsViewController: UIViewController {
     case .actor:
       cell.contentConfiguration = UIHostingConfiguration {
         DetailsActorContentView(data: eventItem.actor)
-      }
+      }.background(.clear)
     case .eventType:
       cell.contentConfiguration = UIHostingConfiguration {
         DetailsEventTypeContentView(eventType: eventTypeFilter)
-      }
+      }.background(.clear)
     case .repository:
       cell.contentConfiguration = UIHostingConfiguration {
         DetailsRepositoryContentView(repository: eventItem.repo)
-      }
+      }.background(.clear)
     case .creationDate:
       cell.contentConfiguration = UIHostingConfiguration {
         DetailsCreationDateContentView(dateString: eventItem.formatedDate)
-      }
+      }.background(.clear)
     case .eventId:
       cell.contentConfiguration = UIHostingConfiguration {
         DetailsEventIDContentView(id: eventItem.id)
-      }
+      }.background(.clear)
     }
   }
 

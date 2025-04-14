@@ -33,7 +33,7 @@ public class TransparentNavigationController: UINavigationController {
     navigationBar.compactAppearance = appearance
     navigationBar.scrollEdgeAppearance = appearance
 
-    navigationBar.tintColor = .systemBackground
+    navigationBar.tintColor = .System.text
   }
 
   public override func pushViewController(_ viewController: UIViewController, animated: Bool) {

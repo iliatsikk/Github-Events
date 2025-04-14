@@ -18,6 +18,8 @@ class ProductListingViewController: UIViewController {
   private enum Section: Hashable {
     case listing
     case skeleton
+    case emptyState
+    case errorState
   }
 
   private lazy var collectionView: UICollectionView = {
@@ -113,6 +115,7 @@ class ProductListingViewController: UIViewController {
   private func handle(action: ViewActions?) {
     switch action {
     case .showSkeletons(let count):
+      clearNonListingSnapshots()
       applySkeletonSnapshot(count: count)
     case .applyItems(let items):
       applyAppendOrReplaceSnapshot(items: items)
@@ -120,7 +123,16 @@ class ProductListingViewController: UIViewController {
       applySnapshot(itemsToAttach: items)
     case .updatePaginationState(let isLoading):
       isPaginating = isLoading
-      reloadFooterState()
+
+      if dataSource?.snapshot().sectionIdentifiers.contains(.listing) ?? false {
+        reloadFooterState()
+      }
+    case .showEmptyState:
+      clearSnapshot()
+      applyEmptyStateSnapshot()
+    case .showErrorState(let title, let description):
+      clearSnapshot()
+      applyErrorStateSnapshot(title: title, description: description)
     case nil:
       print("nil action received")
     }
@@ -153,40 +165,16 @@ class ProductListingViewController: UIViewController {
   // MARK: - Layout Creation (Compositional Layout)
 
   private func createLayout() -> UICollectionViewLayout {
-    let layout = UICollectionViewCompositionalLayout { _, layoutEnvironment -> NSCollectionLayoutSection? in
-      let itemSize = NSCollectionLayoutSize(
-        widthDimension: .fractionalWidth(0.5),
-        heightDimension: .absolute(165.0.scaledWidth)
-      )
+    let layout = UICollectionViewCompositionalLayout { [weak self] sectionIndex, env -> NSCollectionLayoutSection? in
+      guard let self, let dataSource = self.dataSource else { return nil }
 
-      let item = NSCollectionLayoutItem(layoutSize: itemSize)
-      item.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 4.0.scaledWidth, bottom: 0, trailing: 4.0.scaledWidth)
+      let sectionIdentifier = dataSource.snapshot().sectionIdentifiers[sectionIndex]
 
-      let groupSize = NSCollectionLayoutSize(
-        widthDimension: .fractionalWidth(1.0),
-        heightDimension: .absolute(165.0.scaledWidth)
-      )
-
-      let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 2)
-
-      let section = NSCollectionLayoutSection(group: group)
-      section.interGroupSpacing = 8.0.scaledWidth
-      section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 8.0.scaledWidth, bottom: 0, trailing: 8.0.scaledWidth)
-
-      let footerSize = NSCollectionLayoutSize(
-        widthDimension: .fractionalWidth(1.0),
-        heightDimension: .absolute(50.0.scaledWidth)
-      )
-
-      let sectionFooter = NSCollectionLayoutBoundarySupplementaryItem(
-        layoutSize: footerSize,
-        elementKind: UICollectionView.elementKindSectionFooter,
-        alignment: .bottom
-      )
-
-      section.boundarySupplementaryItems = [sectionFooter]
-
-      return section
+      return switch sectionIdentifier {
+      case .listing: createListingSectionLayout(layoutEnvironment: env)
+      case .skeleton: createListingSectionLayout(layoutEnvironment: env)
+      case .emptyState, .errorState: createStateSectionLayout(layoutEnvironment: env)
+      }
     }
 
     let config = UICollectionViewCompositionalLayoutConfiguration()
@@ -196,18 +184,93 @@ class ProductListingViewController: UIViewController {
     return layout
   }
 
+  private func createListingSectionLayout(layoutEnvironment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+    let itemSize = NSCollectionLayoutSize(
+      widthDimension: .fractionalWidth(0.5),
+      heightDimension: .absolute(165.0.scaledWidth)
+    )
+
+    let item = NSCollectionLayoutItem(layoutSize: itemSize)
+    item.contentInsets = NSDirectionalEdgeInsets(
+      top: 0, leading: 4.0.scaledWidth, bottom: 0, trailing: 4.0.scaledWidth
+    )
+
+    let groupSize = NSCollectionLayoutSize(
+      widthDimension: .fractionalWidth(1.0),
+      heightDimension: .absolute(165.0.scaledWidth)
+    )
+
+    let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 2)
+    group.interItemSpacing = .fixed(8.0.scaledWidth)
+
+    let section = NSCollectionLayoutSection(group: group)
+    section.interGroupSpacing = 8.0.scaledWidth
+    section.contentInsets = NSDirectionalEdgeInsets(
+      top: 0, leading: 8.0.scaledWidth, bottom: 0, trailing: 8.0.scaledWidth
+    )
+
+    let footerSize = NSCollectionLayoutSize(
+      widthDimension: .fractionalWidth(1.0),
+      heightDimension: .absolute(50.0.scaledWidth)
+    )
+
+    let sectionFooter = NSCollectionLayoutBoundarySupplementaryItem(
+      layoutSize: footerSize,
+      elementKind: UICollectionView.elementKindSectionFooter,
+      alignment: .bottom
+    )
+    section.boundarySupplementaryItems = [sectionFooter]
+
+    return section
+  }
+
+  private func createStateSectionLayout(layoutEnvironment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+    let itemSize = NSCollectionLayoutSize(
+      widthDimension: .fractionalWidth(1.0),
+      heightDimension: .fractionalHeight(1.0)
+    )
+    let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+    let groupSize = NSCollectionLayoutSize(
+      widthDimension: .fractionalWidth(1.0),
+      heightDimension: itemSize.heightDimension
+    )
+    let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
+
+    let section = NSCollectionLayoutSection(group: group)
+    section.contentInsets = NSDirectionalEdgeInsets(
+      top: 20.0.scaledWidth, leading: 15.0.scaledWidth, bottom: 20.0.scaledWidth, trailing: 15.0.scaledWidth
+    )
+
+    section.boundarySupplementaryItems = []
+
+    return section
+  }
+
   // MARK: - Data Source (Diffable + Cell Registration + Hosting Configuration)
 
   private func configureDataSource() {
-    let itemRegistration = UICollectionView.CellRegistration<UICollectionViewCell, ProductListingItemContentView.Configuration> { cell, _, item in
+    let itemRegistration = UICollectionView.CellRegistration<
+      UICollectionViewCell, ProductListingItemContentView.Configuration
+    > { cell, _, item in
       cell.contentConfiguration = UIHostingConfiguration {
         ProductListingItemContentView(configuration: item)
       }.background(.clear)
     }
 
-    let skeletonRegistration = UICollectionView.CellRegistration<UICollectionViewCell, UUID> { cell, indexPath, itemIdentifier in
+    let skeletonRegistration = UICollectionView.CellRegistration<
+      UICollectionViewCell, UUID
+    > { cell, indexPath, _ in
       cell.contentConfiguration = UIHostingConfiguration {
         ProductListingSkeletonItemContentView()
+      }.background(.clear)
+    }
+
+    let stateInfoRegistration = UICollectionView.CellRegistration<
+      UICollectionViewCell, StateInfoType
+    > { cell, indexPath, item in
+      cell.contentConfiguration = UIHostingConfiguration {
+        StateInfoContentView(stateType: item)
       }.background(.clear)
     }
 
@@ -227,11 +290,17 @@ class ProductListingViewController: UIViewController {
           for: indexPath,
           item: id
         )
+      case .stateInfo(let infoType):
+        collectionView.dequeueConfiguredReusableCell(
+          using: stateInfoRegistration,
+          for: indexPath,
+          item: infoType
+        )
       }
     }
 
     dataSource?.supplementaryViewProvider = { [weak self] (collectionView, kind, indexPath) -> UICollectionReusableView? in
-      guard let self = self, kind == UICollectionView.elementKindSectionFooter else { return nil }
+      guard let self, kind == UICollectionView.elementKindSectionFooter else { return nil }
 
       guard let footerView = collectionView.dequeueReusableSupplementaryView(
         ofKind: kind,
@@ -240,6 +309,10 @@ class ProductListingViewController: UIViewController {
       ) as? PaginationFooterView else {
         fatalError("Failed")
       }
+
+      let sectionIdentifier = self.dataSource?.snapshot().sectionIdentifiers[indexPath.section]
+
+      guard sectionIdentifier == .listing else { return nil }
 
       if self.isPaginating {
         footerView.startAnimating()
@@ -252,6 +325,41 @@ class ProductListingViewController: UIViewController {
   }
 
   // MARK: - Snapshot Update
+
+  @MainActor
+  private func applyEmptyStateSnapshot() {
+    guard let dataSource else { return }
+
+    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
+    snapshot.appendSections([.emptyState])
+    snapshot.appendItems([.stateInfo(.empty)], toSection: .emptyState)
+
+    dataSource.apply(snapshot, animatingDifferences: true)
+  }
+
+  @MainActor
+  private func applyErrorStateSnapshot(title: String, description: String) {
+    guard let dataSource else { return }
+
+    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
+    snapshot.appendSections([.errorState])
+    snapshot.appendItems([.stateInfo(.error(title: title, description: description))], toSection: .errorState)
+
+    dataSource.apply(snapshot, animatingDifferences: true)
+  }
+
+  @MainActor
+  private func clearNonListingSnapshots() {
+    guard let dataSource else { return }
+
+    var snapshot = dataSource.snapshot()
+    let sectionsToDelete = snapshot.sectionIdentifiers.filter { $0 != .listing }
+
+    if !sectionsToDelete.isEmpty {
+      snapshot.deleteSections(sectionsToDelete)
+      dataSource.apply(snapshot, animatingDifferences: false)
+    }
+  }
 
   @MainActor
   private func applySkeletonSnapshot(count: Int) {
@@ -270,18 +378,32 @@ class ProductListingViewController: UIViewController {
     guard let dataSource else { return }
     var snapshot = dataSource.snapshot()
 
-    if snapshot.sectionIdentifiers.contains(.skeleton) {
-      snapshot.deleteSections([.skeleton])
+    let wasShowingNonListing = snapshot.sectionIdentifiers.contains(where: { $0 != .listing })
+
+    let sectionsToDelete = snapshot.sectionIdentifiers.filter { $0 != .listing }
+    if !sectionsToDelete.isEmpty {
+      snapshot.deleteSections(sectionsToDelete)
     }
 
-    let isDataSourceEmpty = snapshot.numberOfItems == 0
-
-    if isDataSourceEmpty {
-      if !snapshot.sectionIdentifiers.contains(.listing) {
+    if !snapshot.sectionIdentifiers.contains(.listing) {
+      if snapshot.numberOfSections > 0 {
+        if let firstSection = snapshot.sectionIdentifiers.first {
+          snapshot.insertSections([.listing], beforeSection: firstSection)
+        } else {
+          snapshot.appendSections([.listing])
+        }
+      } else {
         snapshot.appendSections([.listing])
       }
+    }
+
+    let isListingSectionEmpty = snapshot.numberOfItems(inSection: .listing) == 0
+
+    if wasShowingNonListing || isListingSectionEmpty {
+      snapshot.deleteItems(snapshot.itemIdentifiers(inSection: .listing))
       snapshot.appendItems(items, toSection: .listing)
-      dataSource.apply(snapshot, animatingDifferences: false)
+
+      dataSource.apply(snapshot, animatingDifferences: wasShowingNonListing)
     } else {
       let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
       let newItems = items.filter { !existingItems.contains($0) }
@@ -298,30 +420,28 @@ class ProductListingViewController: UIViewController {
 
     var snapshot = dataSource.snapshot()
 
-    if snapshot.sectionIdentifiers.contains(.skeleton) {
-      snapshot.deleteSections([.skeleton])
+    let sectionsToDelete = snapshot.sectionIdentifiers.filter { $0 != .listing }
+    if !sectionsToDelete.isEmpty {
+      snapshot.deleteSections(sectionsToDelete)
     }
 
     guard snapshot.sectionIdentifiers.contains(.listing) else {
-      if snapshot.numberOfSections == 0 {
-        snapshot.appendSections([.listing])
-        snapshot.appendItems(items, toSection: .listing)
-        dataSource.apply(snapshot, animatingDifferences: false)
-      }
       return
     }
 
     let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
-    let newItems = items.filter { !existingItems.contains($0) }
 
-    guard !newItems.isEmpty else {
-      return
+    let newItemsToAttach = items.compactMap { item -> DataSourceItem? in
+      guard case .item = item, !existingItems.contains(item) else { return nil }
+      return item
     }
 
+    guard !newItemsToAttach.isEmpty else { return }
+
     if let firstItem = snapshot.itemIdentifiers(inSection: .listing).first {
-      snapshot.insertItems(newItems, beforeItem: firstItem)
+      snapshot.insertItems(newItemsToAttach, beforeItem: firstItem)
     } else {
-      snapshot.appendItems(newItems, toSection: .listing)
+      snapshot.appendItems(newItemsToAttach, toSection: .listing)
     }
 
     dataSource.apply(snapshot, animatingDifferences: true)
@@ -351,7 +471,13 @@ class ProductListingViewController: UIViewController {
 
 extension ProductListingViewController: UICollectionViewDelegate {
   func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-    guard let dataSourceItem = dataSource?.itemIdentifier(for: indexPath) else { return }
+    guard let dataSource = dataSource else { return }
+
+    let section = dataSource.snapshot().sectionIdentifiers[indexPath.section]
+
+    guard section == .listing else { return }
+
+    guard let dataSourceItem = dataSource.itemIdentifier(for: indexPath) else { return }
 
     guard case .item(let item) = dataSourceItem else { return }
 

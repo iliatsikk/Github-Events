@@ -16,6 +16,8 @@ extension ProductListingViewController {
     case attachItems([DataSourceItem])
     case updatePaginationState(isLoading: Bool)
     case showSkeletons(count: Int)
+    case showEmptyState
+    case showErrorState(title: String, description: String)
   }
 }
 

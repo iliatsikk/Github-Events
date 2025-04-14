@@ -27,11 +27,13 @@ extension ProductListingViewModel {
   enum ListingItem: Hashable, Identifiable {
     case item(ProductListingItemContentView.Configuration)
     case skeleton(id: UUID = UUID())
+    case stateInfo(StateInfoType)
 
     var id: AnyHashable {
       switch self {
       case .item(let config): config.id
       case .skeleton(let id): id
+      case .stateInfo(let type): type.id
       }
     }
   }
@@ -149,15 +151,20 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       try Task.checkCancellation()
 
       self.eventItems = dataResult.data
-      send(action: .applyItems(listingItems))
+
+      if isInitialLoad && listingItems.isEmpty {
+        send(action: .showEmptyState)
+      } else {
+        send(action: .applyItems(listingItems))
+      }
     } catch {
       fetchError = error
 
       if isInitialLoad {
-        send(action: .applyItems([]))
+        let errorTitle = "Error Occurred"
+        let errorDescription = "Failed to load events. Please try again."
+        send(action: .showErrorState(title: errorTitle, description: errorDescription))
       }
-
-      print(error)
     }
 
     let success = (fetchError == nil && fetchedPaginationInfo != nil)
@@ -166,10 +173,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
     await paginationState.finishedLoading(success: success, hasMoreData: canLoadMore, nextURL: nextURL)
 
-    /// Only hide pagination spinner (not initial load indicator unless error)
-    if !isInitialLoad || fetchError != nil {
-      send(action: .updatePaginationState(isLoading: false))
-    }
+    send(action: .updatePaginationState(isLoading: false))
   }
 
   private func fetchLatestEvents() async {

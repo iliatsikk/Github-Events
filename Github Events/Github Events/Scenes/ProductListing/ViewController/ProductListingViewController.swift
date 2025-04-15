@@ -27,12 +27,43 @@ class ProductListingViewController: UIViewController {
     return UICollectionView(frame: view.bounds, collectionViewLayout: layout)
   }()
 
+  private lazy var scrollToTopButton: UIButton = {
+    let button = UIButton(type: .system)
+    var config = UIButton.Configuration.filled()
+    config.title = "New Content Added"
+    config.image = UIImage(systemName: "arrow.up")
+    config.imagePadding = 8
+    config.imagePlacement = .leading
+    config.baseBackgroundColor = UIColor.secondarySystemBackground
+    config.baseForegroundColor = .System.text
+    config.cornerStyle = .capsule
+    config.contentInsets = NSDirectionalEdgeInsets(
+      top: 8.0.scaledWidth, leading: 16.0.scaledWidth, bottom: 8.0.scaledWidth, trailing: 16.0.scaledWidth
+    )
+
+    button.layer.shadowColor = UIColor.black.cgColor
+    button.layer.shadowOffset = CGSize(width: 0, height: 2.0.scaledWidth)
+    button.layer.shadowRadius = 4
+    button.layer.shadowOpacity = 0.5
+
+    button.configuration = config
+    button.translatesAutoresizingMaskIntoConstraints = false
+    button.isHidden = true
+    button.alpha = 0.0
+    button.addAction(UIAction { [weak self] _ in
+      self?.scrollToTopButtonTapped()
+    }, for: .touchUpInside)
+    return button
+  }()
+
   private var dataSource: UICollectionViewDiffableDataSource<Section, DataSourceItem>?
 
   private let viewModel: ProductListingViewModelType
   private var bindingTask: Task<Void, Never>? = nil
 
   private var isPaginating: Bool = false
+
+  private var isScrollToTopButtonVisible = false
 
   // MARK: - Lifecycle
 
@@ -56,15 +87,16 @@ class ProductListingViewController: UIViewController {
     view.backgroundColor = UIColor.System.background
     title = "Products"
 
-    setupNavigationBar()
+    setup()
     bind()
-    configureCollectionView()
-    configureDataSource()
   }
 
   // MARK: - Navigation bar setup
 
-  private func setupNavigationBar() {
+  private func setup() {
+    configureCollectionView()
+    configureDataSource()
+
     let filterButton = UIBarButtonItem(
       image: UIImage(systemName: "line.3.horizontal.decrease"),
       style: .plain,
@@ -75,6 +107,14 @@ class ProductListingViewController: UIViewController {
     filterButton.tintColor = UIColor.System.text
 
     navigationItem.rightBarButtonItem = filterButton
+
+    view.addSubview(scrollToTopButton)
+    view.bringSubviewToFront(scrollToTopButton)
+
+    NSLayoutConstraint.activate([
+      scrollToTopButton.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 12.0.scaledWidth),
+      scrollToTopButton.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+    ])
   }
 
   // MARK: - Actions
@@ -139,6 +179,8 @@ class ProductListingViewController: UIViewController {
       if dataSource?.snapshot().sectionIdentifiers.contains(.listing) ?? false {
         reloadFooterState()
       }
+    case .showScrollToTopButton:
+      showScrollToTopButtonIfNeeded()
     case nil:
       print("nil action received")
     }
@@ -344,6 +386,40 @@ class ProductListingViewController: UIViewController {
     currentSnapshot.reloadSections([.listing])
 
     dataSource.apply(currentSnapshot, animatingDifferences: false)
+  }
+
+  // MARK: - Scroll to top for newly added content
+
+  private func scrollToTopButtonTapped() {
+    guard !collectionView.visibleCells.isEmpty else { return }
+
+    collectionView.setContentOffset(.zero, animated: true)
+    hideScrollToTopButton()
+  }
+
+  private func showScrollToTopButtonIfNeeded() {
+    guard !isScrollToTopButtonVisible else { return }
+
+    guard collectionView.contentOffset.y > collectionView.bounds.height * 0.1 else { return }
+
+    isScrollToTopButtonVisible = true
+    scrollToTopButton.isHidden = false
+
+    UIView.animate(withDuration: 0.3) {
+      self.scrollToTopButton.alpha = 1.0
+    }
+  }
+
+  private func hideScrollToTopButton() {
+    guard isScrollToTopButtonVisible else { return }
+
+    isScrollToTopButtonVisible = false
+
+    UIView.animate(withDuration: 0.3, animations: { [weak self] in
+      self?.scrollToTopButton.alpha = 0.0
+    }) { [weak self] _ in
+      self?.scrollToTopButton.isHidden = true
+    }
   }
 }
 

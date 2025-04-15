@@ -202,6 +202,10 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
         let listingItems = configurationItems.map { ListingItem.item($0) }
 
         send(action: .setContent(items: listingItems, section: .listing))
+
+        if !filteredLatestItems.isEmpty {
+          send(action: .showScrollToTopButton)
+        }
       }
     } catch {
       print(error)

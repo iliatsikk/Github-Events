@@ -1,7 +1,7 @@
 # GitHub Public Events iOS App
 
-[![Swift Version](https://img.shields.io/badge/Swift-5.7%2B-orange.svg)](https://img.shields.io/badge/Swift-5.7%2B-Orange.svg)
-[![Platform](https://img.shields.io/badge/Platform-iOS%2015.0%2B-blue.svg)](https://img.shields.io/badge/Platform-iOS%2015.0%2B-blue.svg)
+[![Swift Version](https://img.shields.io/badge/Swift-6%2B-orange.svg)](https://img.shields.io/badge/Swift-5.7%2B-Orange.svg)
+[![Platform](https://img.shields.io/badge/Platform-iOS%2017.0%2B-blue.svg)](https://img.shields.io/badge/Platform-iOS%2017.0%2B-blue.svg)
 
 ## Overview
 

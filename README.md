@@ -27,7 +27,7 @@ This is an iOS application built using Swift and UIKit (leveraging modern APIs l
 
 | Listing Screen (Scrolling) | Filter Modal | Detail Screen 
 | :------------------------: | :----------: | :-----------: 
-| ![Listing screen](docs/images/grids.gif) | ![Filtering screen](docs/images/filter.gif) | ![Detail screen ](docs/images/details.png)
+| ![Listing screen](docs/image/grid.gif) | ![Filtering screen](docs/image/filter.gif) | ![Detail screen ](docs/image/details.png)
 
 
 ## Tech Stack & Architecture

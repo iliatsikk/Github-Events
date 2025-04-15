@@ -12,12 +12,8 @@ import Domain
 @MainActor
 extension ProductListingViewController {
   enum ViewActions: Sendable {
-    case applyItems([DataSourceItem])
-    case attachItems([DataSourceItem])
     case updatePaginationState(isLoading: Bool)
-    case showSkeletons(count: Int)
-    case showEmptyState
-    case showErrorState(title: String, description: String)
+    case setContent(items: [DataSourceItem], section: Section)
   }
 }
 

@@ -81,7 +81,8 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
 
   func viewDidLoad() {
     Task { [weak self] in
-      self?.send(action: .showSkeletons(count: PaginationState.perPage))
+      let dataSourceItems: [DataSourceItem] = (0..<PaginationState.perPage).map({ _ in DataSourceItem.skeleton() })
+      self?.send(action: .setContent(items: dataSourceItems, section: .skeleton))
 
       await self?.fetchAndApplyInitialData()
     }
@@ -104,10 +105,13 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   }
 
   func applyFilter(_ filters: Set<EventTypeFilter>) {
+    guard currentFilters != filters else { return }
+
     self.currentFilters = filters
 
     Task { [weak self] in
-      self?.send(action: .showSkeletons(count: PaginationState.perPage))
+      let dataSourceItems: [DataSourceItem] = (0..<PaginationState.perPage).map({ _ in DataSourceItem.skeleton() })
+      self?.send(action: .setContent(items: dataSourceItems, section: .skeleton))
 
       await self?.fetchAndApplyInitialData()
     }
@@ -133,38 +137,37 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
   }
 
   private func fetchPaginatedData(isInitialLoad: Bool) async {
-    var fetchedItems: [EventItem]? = nil
     var fetchedPaginationInfo: PaginationInfo? = nil
     var fetchError: Error? = nil
 
     do {
       let dataResult = try await repository.listPublicEvents(paginationState: paginationState, filter: currentFilters)
-      fetchedItems = dataResult.data
       fetchedPaginationInfo = dataResult.paginationInfo
       try Task.checkCancellation()
 
-      let configurationItems = fetchedItems!.enumerated().map { index, element in
+      self.eventItems.append(contentsOf: dataResult.data)
+
+      let configurationItems = eventItems.enumerated().map { index, element in
         element.toConfigurationItem(index: index)
       }
       let listingItems = configurationItems.map { ListingItem.item($0) }
 
       try Task.checkCancellation()
 
-      self.eventItems = dataResult.data
-
       if isInitialLoad && listingItems.isEmpty {
-        send(action: .showEmptyState)
+        send(action: .setContent(items: [.stateInfo(.empty)], section: .emptyState))
       } else {
-        send(action: .applyItems(listingItems))
+        send(action: .setContent(items: listingItems, section: .listing))
       }
     } catch {
       fetchError = error
 
-      if isInitialLoad {
-        let errorTitle = "Error Occurred"
-        let errorDescription = "Failed to load events. Please try again."
-        send(action: .showErrorState(title: errorTitle, description: errorDescription))
-      }
+      guard isInitialLoad else { return }
+
+      let errorTitle = "Error Occurred"
+      let errorDescription = "Failed to load events. Please try again."
+      let dataSourceItem: DataSourceItem = .stateInfo(.error(title: errorTitle, description: errorDescription))
+      send(action: .setContent(items: [dataSourceItem], section: .errorState))
     }
 
     let success = (fetchError == nil && fetchedPaginationInfo != nil)
@@ -180,16 +183,22 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     do {
       let perPage = PaginationState.perPage
       let latestItems = try await repository.listLatestPublicEvents(perPage: perPage, filter: currentFilters)
+
       try Task.checkCancellation()
+
       if !latestItems.isEmpty {
-        let configurationItems = latestItems.enumerated().map { index, element in
+        let existingIDs = Set(eventItems.map { $0.id })
+        let filteredLatestItems = latestItems.filter { !existingIDs.contains($0.id) }
+
+        eventItems.insert(contentsOf: filteredLatestItems, at: 0)
+
+        let configurationItems = eventItems.enumerated().map { index, element in
           element.toConfigurationItem(index: index)
         }
 
         let listingItems = configurationItems.map { ListingItem.item($0) }
 
-        eventItems.append(contentsOf: latestItems)
-        send(action: .attachItems(listingItems))
+        send(action: .setContent(items: listingItems, section: .listing))
       }
     } catch {
       print(error)

@@ -15,7 +15,7 @@ import DesignSystem
 class ProductListingViewController: UIViewController {
   typealias DataSourceItem = ProductListingViewModel.DataSourceItem
 
-  private enum Section: Hashable {
+  enum Section: Hashable {
     case listing
     case skeleton
     case emptyState
@@ -114,25 +114,17 @@ class ProductListingViewController: UIViewController {
   @MainActor
   private func handle(action: ViewActions?) {
     switch action {
-    case .showSkeletons(let count):
-      clearNonListingSnapshots()
-      applySkeletonSnapshot(count: count)
-    case .applyItems(let items):
-      applyAppendOrReplaceSnapshot(items: items)
-    case .attachItems(let items):
-      applySnapshot(itemsToAttach: items)
+    case .setContent(let items, let section):
+      var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
+      snapshot.appendSections([section])
+      snapshot.appendItems(items, toSection: section)
+      dataSource?.apply(snapshot)
     case .updatePaginationState(let isLoading):
       isPaginating = isLoading
 
       if dataSource?.snapshot().sectionIdentifiers.contains(.listing) ?? false {
         reloadFooterState()
       }
-    case .showEmptyState:
-      clearSnapshot()
-      applyEmptyStateSnapshot()
-    case .showErrorState(let title, let description):
-      clearSnapshot()
-      applyErrorStateSnapshot(title: title, description: description)
     case nil:
       print("nil action received")
     }
@@ -327,127 +319,6 @@ class ProductListingViewController: UIViewController {
   // MARK: - Snapshot Update
 
   @MainActor
-  private func applyEmptyStateSnapshot() {
-    guard let dataSource else { return }
-
-    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
-    snapshot.appendSections([.emptyState])
-    snapshot.appendItems([.stateInfo(.empty)], toSection: .emptyState)
-
-    dataSource.apply(snapshot, animatingDifferences: true)
-  }
-
-  @MainActor
-  private func applyErrorStateSnapshot(title: String, description: String) {
-    guard let dataSource else { return }
-
-    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
-    snapshot.appendSections([.errorState])
-    snapshot.appendItems([.stateInfo(.error(title: title, description: description))], toSection: .errorState)
-
-    dataSource.apply(snapshot, animatingDifferences: true)
-  }
-
-  @MainActor
-  private func clearNonListingSnapshots() {
-    guard let dataSource else { return }
-
-    var snapshot = dataSource.snapshot()
-    let sectionsToDelete = snapshot.sectionIdentifiers.filter { $0 != .listing }
-
-    if !sectionsToDelete.isEmpty {
-      snapshot.deleteSections(sectionsToDelete)
-      dataSource.apply(snapshot, animatingDifferences: false)
-    }
-  }
-
-  @MainActor
-  private func applySkeletonSnapshot(count: Int) {
-    guard let dataSource else { return }
-    let skeletonItems = (0..<count).map { _ in DataSourceItem.skeleton() }
-
-    var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
-    snapshot.appendSections([.skeleton])
-    snapshot.appendItems(skeletonItems, toSection: .skeleton)
-
-    dataSource.apply(snapshot, animatingDifferences: false)
-  }
-
-  @MainActor
-  private func applyAppendOrReplaceSnapshot(items: [DataSourceItem]) {
-    guard let dataSource else { return }
-    var snapshot = dataSource.snapshot()
-
-    let wasShowingNonListing = snapshot.sectionIdentifiers.contains(where: { $0 != .listing })
-
-    let sectionsToDelete = snapshot.sectionIdentifiers.filter { $0 != .listing }
-    if !sectionsToDelete.isEmpty {
-      snapshot.deleteSections(sectionsToDelete)
-    }
-
-    if !snapshot.sectionIdentifiers.contains(.listing) {
-      if snapshot.numberOfSections > 0 {
-        if let firstSection = snapshot.sectionIdentifiers.first {
-          snapshot.insertSections([.listing], beforeSection: firstSection)
-        } else {
-          snapshot.appendSections([.listing])
-        }
-      } else {
-        snapshot.appendSections([.listing])
-      }
-    }
-
-    let isListingSectionEmpty = snapshot.numberOfItems(inSection: .listing) == 0
-
-    if wasShowingNonListing || isListingSectionEmpty {
-      snapshot.deleteItems(snapshot.itemIdentifiers(inSection: .listing))
-      snapshot.appendItems(items, toSection: .listing)
-
-      dataSource.apply(snapshot, animatingDifferences: wasShowingNonListing)
-    } else {
-      let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
-      let newItems = items.filter { !existingItems.contains($0) }
-      if !newItems.isEmpty {
-        snapshot.appendItems(newItems, toSection: .listing)
-        dataSource.apply(snapshot, animatingDifferences: true)
-      }
-    }
-  }
-
-  @MainActor
-  private func applySnapshot(itemsToAttach items: [DataSourceItem]) {
-    guard let dataSource else { return }
-
-    var snapshot = dataSource.snapshot()
-
-    let sectionsToDelete = snapshot.sectionIdentifiers.filter { $0 != .listing }
-    if !sectionsToDelete.isEmpty {
-      snapshot.deleteSections(sectionsToDelete)
-    }
-
-    guard snapshot.sectionIdentifiers.contains(.listing) else {
-      return
-    }
-
-    let existingItems = Set(snapshot.itemIdentifiers(inSection: .listing))
-
-    let newItemsToAttach = items.compactMap { item -> DataSourceItem? in
-      guard case .item = item, !existingItems.contains(item) else { return nil }
-      return item
-    }
-
-    guard !newItemsToAttach.isEmpty else { return }
-
-    if let firstItem = snapshot.itemIdentifiers(inSection: .listing).first {
-      snapshot.insertItems(newItemsToAttach, beforeItem: firstItem)
-    } else {
-      snapshot.appendItems(newItemsToAttach, toSection: .listing)
-    }
-
-    dataSource.apply(snapshot, animatingDifferences: true)
-  }
-
-  @MainActor
   private func reloadFooterState() {
     guard let dataSource else { return }
     var currentSnapshot = dataSource.snapshot()
@@ -459,13 +330,6 @@ class ProductListingViewController: UIViewController {
     currentSnapshot.reloadSections([.listing])
 
     dataSource.apply(currentSnapshot, animatingDifferences: false)
-  }
-
-  @MainActor
-  private func clearSnapshot() {
-    guard let dataSource = dataSource else { return }
-    let snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
-    dataSource.apply(snapshot, animatingDifferences: false)
   }
 }
 
@@ -495,10 +359,6 @@ extension ProductListingViewController: UICollectionViewDelegate {
 
 extension ProductListingViewController: FilterModalDelegate {
   func filterModalDidSave(selectedFilters: Set<EventTypeFilter>) {
-    guard selectedFilters != viewModel.outputs.currentFilters else { return }
-
-    clearSnapshot()
-
     viewModel.inputs.applyFilter(selectedFilters)
   }
 }

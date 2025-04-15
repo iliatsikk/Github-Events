@@ -113,17 +113,17 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       let dataSourceItems: [DataSourceItem] = (0..<PaginationState.perPage).map({ _ in DataSourceItem.skeleton() })
       self?.send(action: .setContent(items: dataSourceItems, section: .skeleton))
 
-      await self?.fetchAndApplyInitialData()
+      await self?.fetchAndApplyInitialData(needsReset: true)
     }
   }
 
   // MARK: - Data Fetching / Actions
 
-  private func fetchAndApplyInitialData() async {
+  private func fetchAndApplyInitialData(needsReset: Bool = false) async {
     await paginationState.reset()
     await paginationState.setIsLoading(true)
 
-    await fetchPaginatedData(isInitialLoad: true)
+    await fetchPaginatedData(isInitialLoad: true, needsReset: true)
   }
 
   private func triggerLoadMoreData() async {
@@ -136,7 +136,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
     await fetchPaginatedData(isInitialLoad: false)
   }
 
-  private func fetchPaginatedData(isInitialLoad: Bool) async {
+  private func fetchPaginatedData(isInitialLoad: Bool, needsReset: Bool = false) async {
     var fetchedPaginationInfo: PaginationInfo? = nil
     var fetchError: Error? = nil
 
@@ -145,7 +145,11 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       fetchedPaginationInfo = dataResult.paginationInfo
       try Task.checkCancellation()
 
-      self.eventItems.append(contentsOf: dataResult.data)
+      if !isInitialLoad {
+        self.eventItems.append(contentsOf: dataResult.data)
+      } else {
+        self.eventItems = dataResult.data
+      }
 
       let configurationItems = eventItems.enumerated().map { index, element in
         element.toConfigurationItem(index: index)
@@ -157,7 +161,7 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
       if isInitialLoad && listingItems.isEmpty {
         send(action: .setContent(items: [.stateInfo(.empty)], section: .emptyState))
       } else {
-        send(action: .setContent(items: listingItems, section: .listing))
+        send(action: .setContent(items: listingItems, section: .listing, needsReset: needsReset))
       }
     } catch {
       fetchError = error
@@ -195,7 +199,6 @@ final class ProductListingViewModel: NSObject, ProductListingViewModelInputs, Pr
         let configurationItems = eventItems.enumerated().map { index, element in
           element.toConfigurationItem(index: index)
         }
-
         let listingItems = configurationItems.map { ListingItem.item($0) }
 
         send(action: .setContent(items: listingItems, section: .listing))

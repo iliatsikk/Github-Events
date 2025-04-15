@@ -114,10 +114,24 @@ class ProductListingViewController: UIViewController {
   @MainActor
   private func handle(action: ViewActions?) {
     switch action {
-    case .setContent(let items, let section):
+    case .setContent(let items, let section, let needsReset):
+      if case .listing = section, var currentSnapshot = dataSource?.snapshot() {
+        currentSnapshot.deleteSections(currentSnapshot.sectionIdentifiers)
+        currentSnapshot.appendSections([.listing])
+
+        if needsReset {
+          currentSnapshot.deleteItems(currentSnapshot.itemIdentifiers)
+        }
+
+        currentSnapshot.appendItems(items, toSection: .listing)
+        dataSource?.apply(currentSnapshot)
+        return
+      }
+
       var snapshot = NSDiffableDataSourceSnapshot<Section, DataSourceItem>()
       snapshot.appendSections([section])
       snapshot.appendItems(items, toSection: section)
+
       dataSource?.apply(snapshot)
     case .updatePaginationState(let isLoading):
       isPaginating = isLoading
@@ -163,8 +177,8 @@ class ProductListingViewController: UIViewController {
       let sectionIdentifier = dataSource.snapshot().sectionIdentifiers[sectionIndex]
 
       return switch sectionIdentifier {
-      case .listing: createListingSectionLayout(layoutEnvironment: env)
-      case .skeleton: createListingSectionLayout(layoutEnvironment: env)
+      case .listing: createListingSectionLayout(layoutEnvironment: env, needsFooter: true)
+      case .skeleton: createListingSectionLayout(layoutEnvironment: env, needsFooter: false)
       case .emptyState, .errorState: createStateSectionLayout(layoutEnvironment: env)
       }
     }
@@ -176,7 +190,7 @@ class ProductListingViewController: UIViewController {
     return layout
   }
 
-  private func createListingSectionLayout(layoutEnvironment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+  private func createListingSectionLayout(layoutEnvironment: NSCollectionLayoutEnvironment, needsFooter: Bool) -> NSCollectionLayoutSection {
     let itemSize = NSCollectionLayoutSize(
       widthDimension: .fractionalWidth(0.5),
       heightDimension: .absolute(165.0.scaledWidth)
@@ -211,7 +225,7 @@ class ProductListingViewController: UIViewController {
       elementKind: UICollectionView.elementKindSectionFooter,
       alignment: .bottom
     )
-    section.boundarySupplementaryItems = [sectionFooter]
+    section.boundarySupplementaryItems = needsFooter ? [sectionFooter] : []
 
     return section
   }

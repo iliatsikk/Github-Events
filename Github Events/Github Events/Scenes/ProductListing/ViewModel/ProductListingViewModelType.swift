@@ -13,7 +13,7 @@ import Domain
 extension ProductListingViewController {
   enum ViewActions: Sendable {
     case updatePaginationState(isLoading: Bool)
-    case setContent(items: [DataSourceItem], section: Section)
+    case setContent(items: [DataSourceItem], section: Section, needsReset: Bool = false)
   }
 }
 

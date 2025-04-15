@@ -239,9 +239,6 @@ class ProductListingViewController: UIViewController {
     )
 
     let item = NSCollectionLayoutItem(layoutSize: itemSize)
-    item.contentInsets = NSDirectionalEdgeInsets(
-      top: 0, leading: 4.0.scaledWidth, bottom: 0, trailing: 4.0.scaledWidth
-    )
 
     let groupSize = NSCollectionLayoutSize(
       widthDimension: .fractionalWidth(1.0),
@@ -249,10 +246,8 @@ class ProductListingViewController: UIViewController {
     )
 
     let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, repeatingSubitem: item, count: 2)
-    group.interItemSpacing = .fixed(8.0.scaledWidth)
 
     let section = NSCollectionLayoutSection(group: group)
-    section.interGroupSpacing = 8.0.scaledWidth
     section.contentInsets = NSDirectionalEdgeInsets(
       top: 0, leading: 8.0.scaledWidth, bottom: 0, trailing: 8.0.scaledWidth
     )

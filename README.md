@@ -7,6 +7,10 @@
 
 This is an iOS application built using Swift and UIKit (leveraging modern APIs like Compositional Layout and Diffable Data Source) to browse the public event feed from the official GitHub REST API. It serves as a demonstration of building a dynamic, paginated list view with filtering, background refresh, and modern concurrency patterns (`async/await`).
 
+## Compatibility
+
+This app is built as a universal application, meaning it has been optimized for **all iOS devices**, including **iPhones** and **iPads**
+
 ## Features
 
 *   **Browse Public Events:** Displays the latest public events from GitHub.

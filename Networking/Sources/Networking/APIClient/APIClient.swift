@@ -96,22 +96,26 @@ public final class APIClient: @unchecked Sendable {
   private func parseLinkHeader(_ header: String) -> [String: String] {
     var links: [String: String] = [:]
 
-    let components = header.components(separatedBy: ",")
-    for component in components {
-      let subComponents = component.components(separatedBy: ";")
-      guard subComponents.count >= 2 else { continue }
+    let linkComponents = header.components(separatedBy: ",")
 
-      var urlString = subComponents[0].trimmingCharacters(in: CharacterSet.whitespaces)
-      if urlString.hasPrefix("<") && urlString.hasSuffix(">") {
-        urlString = String(urlString.dropFirst().dropLast())
+    for linkComponent in linkComponents {
+      let components = linkComponent.components(separatedBy: ";")
+      guard components.count >= 2 else { continue }
+
+      let urlPart = components[0].trimmingCharacters(in: .whitespaces)
+      let trimmedURLString = urlPart.trimmingCharacters(in: CharacterSet(charactersIn: "<>"))
+
+      guard let urlComponents = URLComponents(string: trimmedURLString), let _ = urlComponents.url else {
+        continue
       }
 
-      let relComponent = subComponents[1].trimmingCharacters(in: CharacterSet.whitespaces)
-      if relComponent.hasPrefix("rel=\"") && relComponent.hasSuffix("\"") {
-        let rel = relComponent.replacingOccurrences(of: "rel=\"", with: "")
-          .replacingOccurrences(of: "\"", with: "")
-        links[rel] = urlString
-      }
+      let relPart = components[1].trimmingCharacters(in: .whitespaces)
+      let prefix = "rel=\""
+      let suffix = "\""
+      guard relPart.hasPrefix(prefix), relPart.hasSuffix(suffix) else { continue }
+      let rel = String(relPart.dropFirst(prefix.count).dropLast(suffix.count))
+
+      links[rel] = trimmedURLString
     }
 
     return links
